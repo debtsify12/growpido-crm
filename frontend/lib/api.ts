@@ -5,10 +5,10 @@ import type {
   SourceData, ConversionData, StuckLead,
 } from './types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
+// Always use the relative /api path so all requests are proxied through
+// Next.js rewrites → backend. This avoids CORS errors in production.
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
