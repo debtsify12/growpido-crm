@@ -3,16 +3,3 @@
   "outputDirectory": ".next",
   "framework": "nextjs"
 }
-
-
-dpg-d9dn4bn7f7vs7391estg-a
-
-INternalDatabaseurl - postgresql: //growpido_crm_user:ucOwctOU6ee6DjYaI8tSheBNahpcKQXc@dpg-d9dn4bn7f7vs7391estg-a/growpido_crm
-external data base url - postgresql: //growpido_crm_user:ucOwctOU6ee6DjYaI8tSheBNahpcKQXc@dpg-d9dn4bn7f7vs7391estg-a.virginia-postgres.render.com/growpido_crm
-psql command - PGPASSWORD=ucOwctOU6ee6DjYaI8tSheBNahpcKQXc psql -h dpg-d9dn4bn7f7vs7391estg-a.virginia-postgres.render.com -U growpido_crm_user growpido_crm
-password - ucOwctOU6ee6DjYaI8tSheBNahpcKQXc
-
-hostname - dpg-d9dn4bn7f7vs7391estg-a
-port - 5432
-database - growpido_crm
-username - growpido_crm_user

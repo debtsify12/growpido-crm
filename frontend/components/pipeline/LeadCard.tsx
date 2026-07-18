@@ -23,7 +23,6 @@ export default function LeadCard({ lead, color, onClick, isDragging }: LeadCardP
     '--stage-color': color,
   } as React.CSSProperties;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/rules-of-hooks, @typescript-eslint/ban-ts-comment
   // @ts-ignore - bypassing strict purity checks for a simple date calculation
   const daysSinceActivity = lead.last_activity_at
     ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
