@@ -108,9 +108,15 @@ export default function LeadProfilePage() {
   }
 
   const stageColor = STAGE_COLORS[lead.stage] || '#6B7280';
-  const daysSince = lead.last_activity_at
-    ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
-    : 0;
+  const [daysSince, setDaysSince] = useState(0);
+
+  useEffect(() => {
+    if (lead.last_activity_at) {
+      setDaysSince(
+        Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
+      );
+    }
+  }, [lead.last_activity_at]);
 
   return (
     <div className="page-container">

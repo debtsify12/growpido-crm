@@ -23,9 +23,16 @@ export default function LeadCard({ lead, color, onClick, isDragging }: LeadCardP
     '--stage-color': color,
   } as React.CSSProperties;
 
-  const daysSinceActivity = lead.last_activity_at
-    ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
-    : 0;
+  const [daysSinceActivity, setDaysSinceActivity] = React.useState(0);
+
+  React.useEffect(() => {
+    if (lead.last_activity_at) {
+      setDaysSinceActivity(
+        Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
+      );
+    }
+  }, [lead.last_activity_at]);
+
   const isStuck = daysSinceActivity >= 7;
 
   const budget = lead.budget
