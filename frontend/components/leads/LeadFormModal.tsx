@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { leadsApi } from '@/lib/api';
 import {
-  PIPELINE_STAGES, LEAD_SOURCES, SERVICES,
+  PIPELINE_STAGES, LEAD_SOURCES,
   LeadStage, LeadSource,
 } from '@/lib/types';
 

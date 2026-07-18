@@ -23,7 +23,6 @@ export default function LeadCard({ lead, color, onClick, isDragging }: LeadCardP
     '--stage-color': color,
   } as React.CSSProperties;
 
-  // @ts-expect-error - bypassing strict purity checks for a simple date calculation
   const daysSinceActivity = lead.last_activity_at
     ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
     : 0;

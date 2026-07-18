@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { dashboardApi } from '@/lib/api';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, FunnelChart, Funnel, LabelList,
+  PieChart, Pie, Cell,
 } from 'recharts';
 import {
   DashboardOverview, PipelineStageData, SourceData, ConversionData, StuckLead, STAGE_COLORS,
 } from '@/lib/types';
-import { formatDistanceToNow } from 'date-fns';
+
 import { useRouter } from 'next/navigation';
 
 const CHART_COLORS = ['#6366F1', '#8B5CF6', '#A78BFA', '#F59E0B', '#EF4444', '#10B981', '#06B6D4', '#3B82F6', '#F97316', '#EC4899', '#6B7280'];
