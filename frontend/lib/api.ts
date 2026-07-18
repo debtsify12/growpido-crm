@@ -8,7 +8,7 @@ import type {
 // Always use the relative /api path so all requests are proxied through
 // Next.js rewrites → backend. This avoids CORS errors in production.
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '',
   headers: { 'Content-Type': 'application/json' },
 });
 
