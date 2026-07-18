@@ -1,0 +1,24 @@
+services:
+  # The FastAPI backend web service
+  - type: web
+    name: growpido-backend
+    env: python
+    region: ohio
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: growpido-db
+          property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: "https://your-vercel-domain.vercel.app"
+      - key: SECRET_KEY
+        generateValue: true
+
+databases:
+  # Managed PostgreSQL database
+  - name: growpido-db
+    region: ohio
+    databaseName: growpido_crm
+    user: growpido_user
