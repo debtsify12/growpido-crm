@@ -108,7 +108,7 @@ export default function LeadProfilePage() {
   }
 
   const stageColor = STAGE_COLORS[lead.stage] || '#6B7280';
-  // @ts-ignore - bypassing strict purity checks for a simple date calculation
+  // @ts-expect-error - bypassing strict purity checks for a simple date calculation
   const daysSince = lead.last_activity_at
     ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
     : 0;
