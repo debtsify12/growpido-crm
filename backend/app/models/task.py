@@ -19,6 +19,10 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    # Tenant
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=True, index=True)
+
     lead_id = Column(String, ForeignKey("leads.id"), nullable=True, index=True)
     assigned_to = Column(String, ForeignKey("users.id"), nullable=True, index=True)
 

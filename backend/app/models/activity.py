@@ -22,12 +22,16 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    # Tenant
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=True, index=True)
+
     lead_id = Column(String, ForeignKey("leads.id"), nullable=False, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=True)  # null = system
 
     activity_type = Column(SAEnum(ActivityType), nullable=False)
     description = Column(Text, nullable=False)
-    meta_data = Column(JSON, default=dict)  # e.g. {"from_stage": "New Lead", "to_stage": "Won"}
+    meta_data = Column(JSON, default=dict)
 
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 

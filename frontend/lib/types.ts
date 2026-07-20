@@ -1,6 +1,17 @@
 // Growpido CRM — TypeScript Type Definitions
 
-export type UserRole = 'admin' | 'member';
+export type UserRole = 'super_admin' | 'admin' | 'member';
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  is_active: boolean;
+  created_at: string;
+  user_count?: number;
+  lead_count?: number;
+}
 
 export interface User {
   id: string;
@@ -8,6 +19,13 @@ export interface User {
   email: string;
   role: UserRole;
   is_active: boolean;
+  tenant_id?: string | null;
+  department?: string | null;
+  designation?: string | null;
+  phone?: string | null;
+  employee_id?: string | null;
+  bio?: string | null;
+  join_date?: string | null;
   created_at: string;
 }
 
@@ -63,6 +81,7 @@ export interface Lead {
   lost_reason?: string;
   follow_up_count: number;
   assigned_to?: string;
+  tenant_id?: string;
   assigned_user?: {
     id: string;
     name: string;
@@ -87,6 +106,7 @@ export interface Task {
   id: string;
   lead_id?: string;
   assigned_to?: string;
+  tenant_id?: string;
   title: string;
   description?: string;
   task_type: TaskType;
@@ -149,6 +169,43 @@ export interface Activity {
   };
 }
 
+// ─── Work Log Types ───────────────────────────────────────────────────────────
+
+export type WorkLogCategory =
+  | 'Development'
+  | 'Sales'
+  | 'Client Management'
+  | 'Design'
+  | 'Research'
+  | 'Meetings'
+  | 'Admin'
+  | 'Other';
+
+export interface WorkLog {
+  id: string;
+  user_id: string;
+  tenant_id?: string;
+  lead_id?: string;
+  date: string;
+  description: string;
+  hours?: number;
+  category: WorkLogCategory;
+  created_at: string;
+}
+
+// ─── People Stats ─────────────────────────────────────────────────────────────
+
+export interface PersonStats {
+  total_leads: number;
+  open_leads: number;
+  won_leads: number;
+  lost_leads: number;
+  total_tasks: number;
+  completed_tasks: number;
+  overdue_tasks: number;
+  work_hours_this_month: number;
+}
+
 // ─── Dashboard Types ──────────────────────────────────────────────────────────
 
 export interface DashboardOverview {
@@ -158,6 +215,7 @@ export interface DashboardOverview {
   lost_leads: number;
   total_pipeline_value: number;
   overdue_tasks: number;
+  team_size: number;
 }
 
 export interface PipelineStageData {
@@ -184,6 +242,23 @@ export interface StuckLead {
   stage: string;
   last_activity_at: string;
   days_stuck: number;
+  assigned_to?: string;
+}
+
+export interface TeamPerformance {
+  user_id: string;
+  name: string;
+  email: string;
+  department?: string;
+  designation?: string;
+  employee_id?: string;
+  role: string;
+  total_leads: number;
+  open_leads: number;
+  won_leads: number;
+  completed_tasks: number;
+  pending_tasks: number;
+  overdue_tasks: number;
 }
 
 // ─── API Auth ─────────────────────────────────────────────────────────────────
@@ -242,3 +317,26 @@ export const LEAD_SOURCES: LeadSource[] = [
 ];
 
 export const SERVICES = ['LinkedIn Reputation Building', 'Custom AI Agents'];
+
+export const WORK_LOG_CATEGORIES: WorkLogCategory[] = [
+  'Development',
+  'Sales',
+  'Client Management',
+  'Design',
+  'Research',
+  'Meetings',
+  'Admin',
+  'Other',
+];
+
+export const DEPARTMENTS = [
+  'Sales',
+  'Engineering',
+  'Design',
+  'Marketing',
+  'Operations',
+  'Finance',
+  'HR',
+  'Product',
+  'Customer Success',
+];

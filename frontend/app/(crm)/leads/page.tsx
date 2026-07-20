@@ -17,6 +17,7 @@ export default function LeadsPage() {
   const [stageFilter, setStageFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -53,10 +54,12 @@ export default function LeadsPage() {
     try {
       await importExportApi.importCsv(file);
       loadLeads();
-      alert('Import successful!');
+      setImportMsg({ type: 'success', text: 'Import successful! Leads have been added to your pipeline.' });
     } catch {
-      alert('Import failed. Check CSV format.');
+      setImportMsg({ type: 'error', text: 'Import failed. Please check the CSV format.' });
     }
+    setTimeout(() => setImportMsg(null), 5000);
+    e.target.value = ''; // Reset input
   }
 
   const stageBadge = (stage: string) => {
@@ -99,6 +102,22 @@ export default function LeadsPage() {
           </button>
         </div>
       </div>
+
+      {importMsg && (
+        <div style={{
+          padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', fontWeight: 500, fontSize: '13.5px',
+          background: importMsg.type === 'success' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+          color: importMsg.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)',
+          display: 'flex', alignItems: 'center', gap: '8px', border: `1px solid ${importMsg.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`
+        }}>
+          {importMsg.type === 'success' ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          )}
+          {importMsg.text}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="filter-bar">

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 from datetime import datetime, date
@@ -6,9 +6,11 @@ from datetime import datetime, date
 from app.database import get_db
 from app.models.task import Task
 from app.models.user import User
+from app.models.lead import Lead
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 from app.core.auth import get_current_user
 from app.services.automation import handle_task_completed
+from app.services.email import send_task_assignment_email
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -55,6 +57,7 @@ def list_tasks(
 @router.post("", response_model=TaskResponse)
 def create_task(
     payload: TaskCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -79,6 +82,14 @@ def create_task(
 
     db.commit()
     db.refresh(task)
+    
+    # Send email notification if assigned to someone else
+    if task.assigned_to and task.assigned_to != current_user.id:
+        assigned_user = db.query(User).filter(User.id == task.assigned_to).first()
+        if assigned_user:
+            lead_name = lead.name if payload.lead_id and lead else None
+            background_tasks.add_task(send_task_assignment_email, assigned_user.email, task.title, lead_name)
+
     return task
 
 
@@ -103,6 +114,7 @@ def get_task(
 def update_task(
     task_id: str,
     payload: TaskUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -124,6 +136,15 @@ def update_task(
 
     db.commit()
     db.refresh(task)
+
+    # If newly assigned to someone else
+    if "assigned_to" in update_data and task.assigned_to and task.assigned_to != current_user.id:
+        assigned_user = db.query(User).filter(User.id == task.assigned_to).first()
+        if assigned_user:
+            lead = db.query(Lead).filter(Lead.id == task.lead_id).first() if task.lead_id else None
+            lead_name = lead.name if lead else None
+            background_tasks.add_task(send_task_assignment_email, assigned_user.email, task.title, lead_name)
+
     return task
 
 

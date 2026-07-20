@@ -91,6 +91,7 @@ def handle_stage_change(
         title, task_type, due_days = STAGE_TASK_MAP[new_stage]
         task = Task(
             lead_id=lead.id,
+            tenant_id=lead.tenant_id,
             assigned_to=lead.assigned_to or changed_by_user_id,
             title=title,
             task_type=task_type,
@@ -102,6 +103,7 @@ def handle_stage_change(
     # 3. Log activity
     activity = Activity(
         lead_id=lead.id,
+        tenant_id=lead.tenant_id,
         user_id=changed_by_user_id,
         activity_type=ActivityType.stage_change,
         description=f"Stage changed from '{old_stage.value}' to '{new_stage.value}'",
@@ -114,12 +116,14 @@ def handle_stage_change(
         from app.models.note import Note
         note_obj = Note(
             lead_id=lead.id,
+            tenant_id=lead.tenant_id,
             author_id=changed_by_user_id,
             content=note,
         )
         db.add(note_obj)
         note_activity = Activity(
             lead_id=lead.id,
+            tenant_id=lead.tenant_id,
             user_id=changed_by_user_id,
             activity_type=ActivityType.note_added,
             description="Note added during stage change",
@@ -140,6 +144,7 @@ def handle_lead_assignment(
     """Log activity when a lead is reassigned."""
     activity = Activity(
         lead_id=lead.id,
+        tenant_id=lead.tenant_id,
         user_id=changed_by_user_id,
         activity_type=ActivityType.lead_assigned,
         description=f"Lead assigned to user {new_assignee_id}",
@@ -157,8 +162,12 @@ def handle_task_completed(
     user_id: str,
 ) -> None:
     """Log activity when a task is marked done."""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    tenant_id = lead.tenant_id if lead else None
+    
     activity = Activity(
         lead_id=lead_id,
+        tenant_id=tenant_id,
         user_id=user_id,
         activity_type=ActivityType.task_completed,
         description=f"Task completed: '{task_title}'",
@@ -167,7 +176,6 @@ def handle_task_completed(
     db.add(activity)
 
     # Update last activity on lead
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if lead:
         lead.last_activity_at = datetime.utcnow()
 
@@ -219,6 +227,7 @@ def check_and_alert_stuck_leads(db: Session) -> int:
 
         task = Task(
             lead_id=lead.id,
+            tenant_id=lead.tenant_id,
             assigned_to=lead.assigned_to,
             title=f"⚠️ Stuck Lead Alert: {lead.full_name} — no activity for {settings.STUCK_LEAD_DAYS}+ days",
             task_type=TaskType.follow_up,
@@ -229,6 +238,7 @@ def check_and_alert_stuck_leads(db: Session) -> int:
 
         alert = Activity(
             lead_id=lead.id,
+            tenant_id=lead.tenant_id,
             user_id=None,  # system generated
             activity_type=ActivityType.stuck_alert,
             description=f"No activity for {settings.STUCK_LEAD_DAYS}+ days. Reminder task created.",

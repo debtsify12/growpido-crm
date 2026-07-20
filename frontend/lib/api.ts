@@ -2,7 +2,8 @@ import axios from 'axios';
 import type {
   User, Lead, LeadListResponse, Task, Note, Activity,
   TokenResponse, DashboardOverview, PipelineStageData,
-  SourceData, ConversionData, StuckLead,
+  SourceData, ConversionData, StuckLead, TeamPerformance,
+  Tenant, WorkLog, PersonStats,
 } from './types';
 
 // Always use the relative /api path so all requests are proxied through
@@ -28,9 +29,12 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('growpido_token');
-      localStorage.removeItem('growpido_user');
-      window.location.href = '/login';
+      // Don't reload if we're already on the login page (e.g. login failed)
+      if (window.location.pathname !== '/login') {
+        localStorage.removeItem('growpido_token');
+        localStorage.removeItem('growpido_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }
@@ -42,6 +46,10 @@ export const authApi = {
   login: (email: string, password: string) =>
     api.post<TokenResponse>('/api/auth/login', { email, password }),
   me: () => api.get<User>('/api/auth/me'),
+  forgotPassword: (email: string) => 
+    api.post('/api/auth/forgot-password', { email }),
+  resetPassword: (token: string, new_password: string) =>
+    api.post('/api/auth/reset-password', { token, new_password }),
 };
 
 // ─── Leads ────────────────────────────────────────────────────────────────────
@@ -82,10 +90,47 @@ export const tasksApi = {
 
 export const usersApi = {
   list: () => api.get<User[]>('/api/users'),
-  create: (data: { name: string; email: string; password: string; role: string }) =>
+  get: (id: string) => api.get<User>(`/api/users/${id}`),
+  create: (data: Partial<User> & { password: string }) =>
     api.post<User>('/api/users', data),
   update: (id: string, data: Partial<User>) => api.put<User>(`/api/users/${id}`, data),
   deactivate: (id: string) => api.delete(`/api/users/${id}`),
+};
+
+// ─── People ───────────────────────────────────────────────────────────────────
+
+export const peopleApi = {
+  list: (params?: { department?: string; designation?: string; search?: string; is_active?: boolean }) =>
+    api.get<User[]>('/api/people', { params }),
+  departments: () => api.get<string[]>('/api/people/departments'),
+  get: (id: string) => api.get<User>(`/api/people/${id}`),
+  stats: (id: string) => api.get<PersonStats>(`/api/people/${id}/stats`),
+  leads: (id: string, params?: { stage?: string; limit?: number }) =>
+    api.get(`/api/people/${id}/leads`, { params }),
+  tasks: (id: string, params?: { is_done?: boolean; limit?: number }) =>
+    api.get(`/api/people/${id}/tasks`, { params }),
+  workLogs: (id: string) => api.get<WorkLog[]>(`/api/people/${id}/work-logs`),
+  addWorkLog: (id: string, data: {
+    date: string;
+    description: string;
+    hours?: number;
+    category: string;
+    lead_id?: string;
+  }) => api.post<WorkLog>(`/api/people/${id}/work-logs`, data),
+  deleteWorkLog: (userId: string, logId: string) =>
+    api.delete(`/api/people/${userId}/work-logs/${logId}`),
+};
+
+// ─── Tenants ──────────────────────────────────────────────────────────────────
+
+export const tenantsApi = {
+  list: () => api.get<Tenant[]>('/api/tenants'),
+  get: (id: string) => api.get<Tenant>(`/api/tenants/${id}`),
+  create: (data: { name: string; slug: string; plan?: string }) =>
+    api.post<Tenant>('/api/tenants', data),
+  update: (id: string, data: Partial<Tenant>) => api.put<Tenant>(`/api/tenants/${id}`, data),
+  createAdmin: (tenantId: string, data: Partial<User> & { password: string }) =>
+    api.post<User>(`/api/tenants/${tenantId}/admins`, data),
 };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -97,7 +142,7 @@ export const dashboardApi = {
   conversionRates: () => api.get<ConversionData[]>('/api/dashboard/conversion-rates'),
   stuckLeads: (days?: number) =>
     api.get<StuckLead[]>('/api/dashboard/stuck-leads', { params: { days } }),
-  teamPerformance: () => api.get('/api/dashboard/team-performance'),
+  teamPerformance: () => api.get<TeamPerformance[]>('/api/dashboard/team-performance'),
 };
 
 // ─── Import / Export ──────────────────────────────────────────────────────────

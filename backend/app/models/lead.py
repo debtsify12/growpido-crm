@@ -60,6 +60,9 @@ class Lead(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
+    # Tenant
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=True, index=True)
+
     # Basic Info
     full_name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
@@ -104,6 +107,7 @@ class Lead(Base):
     stage_changed_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
+    tenant = relationship("Tenant", back_populates="leads")
     assigned_user = relationship(
         "User", back_populates="assigned_leads", foreign_keys=[assigned_to]
     )
