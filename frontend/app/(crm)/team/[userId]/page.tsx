@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -43,8 +44,8 @@ export default function PersonProfilePage() {
 
   const [person, setPerson] = useState<User | null>(null);
   const [stats, setStats] = useState<PersonStats | null>(null);
-  const [leads, setLeads] = useState<unknown[]>([]);
-  const [tasks, setTasks] = useState<unknown[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'leads' | 'tasks' | 'worklog'>('leads');
@@ -74,8 +75,8 @@ export default function PersonProfilePage() {
     ]).then(([p, s, l, t, w]) => {
       setPerson(p.data);
       setStats(s.data);
-      setLeads(l.data as unknown[]);
-      setTasks(t.data as unknown[]);
+      setLeads(l.data as any[]);
+      setTasks(t.data as any[]);
       setWorkLogs(w.data);
     }).catch(() => router.push('/team'))
       .finally(() => setLoading(false));
@@ -287,7 +288,7 @@ export default function PersonProfilePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(leads as Record<string, unknown>[]).map((l) => {
+                  {(leads as any[]).map((l) => {
                     const stage = l.stage as string;
                     const stageColor = STAGE_COLORS[stage as keyof typeof STAGE_COLORS] || '#6B7280';
                     return (
@@ -326,8 +327,8 @@ export default function PersonProfilePage() {
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: '14px' }}>No tasks assigned yet.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {(tasks as Record<string, unknown>[]).map((t) => {
-                const isOverdue = !t.is_done && t.due_date && new Date(t.due_date as string) < new Date();
+              {(tasks as any[]).map((t) => {
+                const isOverdue = !t.is_done && t.due_date && new Date(t.due_date) < new Date();
                 return (
                   <div key={t.id as string} className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                     <div style={{
@@ -344,11 +345,11 @@ export default function PersonProfilePage() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: '13px', color: t.is_done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: t.is_done ? 'line-through' : 'none' }}>
-                        {t.title as string}
+                        {t.title}
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {t.task_type as string}
-                        {t.due_date && ` · Due ${new Date(t.due_date as string).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                        {t.task_type}
+                        {t.due_date && ` · Due ${new Date(t.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
                       </div>
                     </div>
                     {isOverdue && (

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { tenantsApi, usersApi } from '@/lib/api';
+import { tenantsApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import type { Tenant, User } from '@/lib/types';
+import type { Tenant } from '@/lib/types';
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });

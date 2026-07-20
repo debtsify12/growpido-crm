@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usersApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
@@ -30,7 +30,7 @@ const EMPTY_FORM = {
 
 type Tab = 'profile' | 'team';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const { user: currentUser, setAuth } = useAuthStore();
   const searchParams = useSearchParams();
   const defaultTab = (searchParams.get('tab') as Tab) || 'profile';
@@ -63,7 +63,7 @@ export default function SettingsPage() {
     if (activeTab === 'team' && canManageTeam) {
       loadUsers();
     }
-  }, [activeTab]);
+  }, [activeTab, canManageTeam]);
 
   async function loadUsers() {
     setLoading(true);
@@ -480,5 +480,13 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="page-container"><div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading Settings...</div></div>}>
+      <SettingsContent />
+    </Suspense>
   );
 }

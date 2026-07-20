@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,8 +38,8 @@ export default function ForgotPasswordPage() {
 
     try {
       await authApi.forgotPassword(email);
-      setSuccess(true);
-    } catch (err: unknown) {
+      setSuccessMsg('If an account exists, a reset link has been sent to your email.');
+    } catch {
       setError('Failed to send reset link. Please try again.');
     } finally {
       setLoading(false);
@@ -61,10 +61,10 @@ export default function ForgotPasswordPage() {
 
         <h1 className="login-title">Reset password</h1>
         
-        {success ? (
+        {successMsg ? (
           <>
             <p className="login-subtitle" style={{ marginBottom: '24px' }}>
-              We've sent a password reset link to <br/><strong>{email}</strong>
+              {successMsg}
             </p>
             <div style={{ textAlign: 'center' }}>
               <Link 
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <p className="login-subtitle">
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email. We&apos;ll send you a secure magic link to reset your password.
             </p>
 
             <form className="login-form" onSubmit={handleSubmit}>
@@ -91,19 +91,20 @@ export default function ForgotPasswordPage() {
                   id="email"
                   type="email"
                   className="form-control"
-                  placeholder="e.g. name@company.com"
+                  placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoFocus
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--border-strong)', background: 'var(--bg-body)', color: 'var(--text-primary)', outline: 'none' }}
                 />
               </div>
 
               <button
                 type="submit"
-                className="btn btn-primary btn-lg w-full"
-                disabled={loading}
-                style={{ marginTop: '12px' }}
+                className="btn btn-primary"
+                disabled={loading || !email}
+                style={{ width: '100%', padding: '12px', justifyContent: 'center', marginTop: '10px' }}
               >
                 {loading ? (
                   <>
