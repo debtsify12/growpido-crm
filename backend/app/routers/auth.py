@@ -45,8 +45,8 @@ class ResetPasswordRequest(BaseModel):
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     if user and user.is_active:
-        # Create a special token that expires in 1 hour
-        reset_token = create_access_token({"sub": user.id, "type": "reset"}, expires_delta=timedelta(minutes=60))
+        # Create a special token that expires in 2 days
+        reset_token = create_access_token({"sub": user.id, "type": "reset"}, expires_delta=timedelta(days=2))
         # In a background task or directly send email
         send_password_reset_email(user.email, reset_token)
     

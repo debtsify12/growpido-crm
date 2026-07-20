@@ -69,8 +69,8 @@ export default function ForgotPasswordPage() {
             <div style={{ textAlign: 'center' }}>
               <Link 
                 href="/login" 
-                className="btn btn-primary btn-lg w-full"
-                style={{ display: 'inline-block', textDecoration: 'none' }}
+                className="btn btn-primary"
+                style={{ display: 'flex', width: '100%', padding: '12px', justifyContent: 'center', textDecoration: 'none' }}
               >
                 Return to Login
               </Link>
