@@ -15,6 +15,17 @@ from app.routers import tenants, people
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    try:
+        import alembic.config
+        import alembic.command
+        
+        # Use programmatic Alembic command instead of CLI which calls sys.exit
+        alembic_cfg = alembic.config.Config("alembic.ini")
+        alembic.command.upgrade(alembic_cfg, "head")
+        print("Database migrations applied successfully.")
+    except Exception as e:
+        print(f"Failed to apply database migrations: {e}")
+
     create_all_tables()
     _seed_default_tenant_and_super_admin()
     start_scheduler()
