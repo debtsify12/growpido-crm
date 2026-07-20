@@ -20,7 +20,10 @@ router = APIRouter(prefix="/api/leads", tags=["leads"])
 def _get_lead_or_404(lead_id: str, db: Session) -> Lead:
     lead = (
         db.query(Lead)
-        .options(joinedload(Lead.assigned_user))
+        .options(
+            joinedload(Lead.assigned_user),
+            joinedload(Lead.added_by_user)
+        )
         .filter(Lead.id == lead_id)
         .first()
     )
@@ -44,11 +47,17 @@ def list_leads(
 ):
     from app.models.user import UserRole
 
-    query = db.query(Lead).options(joinedload(Lead.assigned_user))
+    query = db.query(Lead).options(
+        joinedload(Lead.assigned_user),
+        joinedload(Lead.added_by_user)
+    )
 
-    # Role-based filter: members only see their own leads
+    # Role-based filter
     if current_user.role == UserRole.member:
         query = query.filter(Lead.assigned_to == current_user.id)
+    elif current_user.role == UserRole.admin:
+        query = query.filter(Lead.tenant_id == current_user.tenant_id)
+
 
     if stage:
         query = query.filter(Lead.stage == stage)
@@ -86,6 +95,8 @@ def create_lead(
     current_user: User = Depends(get_current_user),
 ):
     lead = Lead(**payload.model_dump())
+    lead.added_by_id = current_user.id
+    lead.tenant_id = current_user.tenant_id
     db.add(lead)
     db.flush()
 

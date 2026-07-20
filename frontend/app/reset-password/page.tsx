@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/api';
 
 const GrowpidoLogo = ({ size = 56 }: { size?: number }) => (
@@ -25,7 +25,7 @@ const GrowpidoLogo = ({ size = 56 }: { size?: number }) => (
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  const router = useRouter();
+
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

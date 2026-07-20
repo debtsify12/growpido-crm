@@ -67,6 +67,9 @@ export interface Lead {
   company_name?: string;
   company_industry?: string;
   city?: string;
+  linkedin_url?: string;
+  company_address?: string;
+  poc_name?: string;
   company_funding_stage?: FundingStage;
   revenue_range?: RevenueRange;
   budget?: number;
@@ -82,7 +85,16 @@ export interface Lead {
   follow_up_count: number;
   assigned_to?: string;
   tenant_id?: string;
+  added_by_id?: string;
+  next_step?: string;
+  next_step_date?: string;
+  general_notes?: string;
   assigned_user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  added_by_user?: {
     id: string;
     name: string;
     email: string;

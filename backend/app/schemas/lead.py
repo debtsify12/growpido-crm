@@ -11,6 +11,9 @@ class LeadCreate(BaseModel):
     company_name: Optional[str] = None
     company_industry: Optional[str] = None
     city: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    company_address: Optional[str] = None
+    poc_name: Optional[str] = None
     company_funding_stage: Optional[FundingStage] = None
     revenue_range: Optional[RevenueRange] = None
     budget: Optional[int] = None
@@ -22,6 +25,10 @@ class LeadCreate(BaseModel):
     tags: Optional[List[str]] = []
     stage: Optional[LeadStage] = LeadStage.new_lead
     assigned_to: Optional[str] = None
+    added_by_id: Optional[str] = None
+    next_step: Optional[str] = None
+    next_step_date: Optional[datetime] = None
+    general_notes: Optional[str] = None
 
 
 class LeadUpdate(BaseModel):
@@ -31,6 +38,9 @@ class LeadUpdate(BaseModel):
     company_name: Optional[str] = None
     company_industry: Optional[str] = None
     city: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    company_address: Optional[str] = None
+    poc_name: Optional[str] = None
     company_funding_stage: Optional[FundingStage] = None
     revenue_range: Optional[RevenueRange] = None
     budget: Optional[int] = None
@@ -41,6 +51,9 @@ class LeadUpdate(BaseModel):
     priority: Optional[LeadPriority] = None
     tags: Optional[List[str]] = None
     assigned_to: Optional[str] = None
+    next_step: Optional[str] = None
+    next_step_date: Optional[datetime] = None
+    general_notes: Optional[str] = None
     is_lost: Optional[bool] = None
     lost_reason: Optional[str] = None
 
@@ -67,6 +80,9 @@ class LeadResponse(BaseModel):
     company_name: Optional[str]
     company_industry: Optional[str]
     city: Optional[str]
+    linkedin_url: Optional[str]
+    company_address: Optional[str]
+    poc_name: Optional[str]
     company_funding_stage: Optional[FundingStage]
     revenue_range: Optional[RevenueRange]
     budget: Optional[int]
@@ -82,6 +98,11 @@ class LeadResponse(BaseModel):
     follow_up_count: int
     assigned_to: Optional[str]
     assigned_user: Optional[AssignedUserEmbed]
+    added_by_id: Optional[str]
+    added_by_user: Optional[AssignedUserEmbed] = None
+    next_step: Optional[str]
+    next_step_date: Optional[datetime]
+    general_notes: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
     last_activity_at: Optional[datetime]

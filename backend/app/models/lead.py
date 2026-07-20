@@ -70,6 +70,9 @@ class Lead(Base):
     company_name = Column(String, nullable=True)
     company_industry = Column(String, nullable=True)
     city = Column(String, nullable=True)
+    linkedin_url = Column(String, nullable=True)
+    company_address = Column(String, nullable=True)
+    poc_name = Column(String, nullable=True)
 
     # Company Details
     company_funding_stage = Column(SAEnum(FundingStage), nullable=True)
@@ -97,8 +100,12 @@ class Lead(Base):
     lost_reason = Column(Text, nullable=True)
     follow_up_count = Column(Integer, default=0)
 
-    # Assignment
+    # Assignment & Next Steps
     assigned_to = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    added_by_id = Column(String, ForeignKey("users.id"), nullable=True)
+    next_step = Column(String, nullable=True)
+    next_step_date = Column(DateTime, nullable=True)
+    general_notes = Column(Text, nullable=True)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -108,9 +115,8 @@ class Lead(Base):
 
     # Relationships
     tenant = relationship("Tenant", back_populates="leads")
-    assigned_user = relationship(
-        "User", back_populates="assigned_leads", foreign_keys=[assigned_to]
-    )
+    assigned_user = relationship("User", foreign_keys=[assigned_to], back_populates="assigned_leads")
+    added_by_user = relationship("User", foreign_keys=[added_by_id])
     tasks = relationship("Task", back_populates="lead", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="lead", cascade="all, delete-orphan")
     activities = relationship(

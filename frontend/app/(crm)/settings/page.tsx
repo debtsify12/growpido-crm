@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { usersApi } from '@/lib/api';
+import { usersApi, peopleApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import type { User } from '@/lib/types';
 import { DEPARTMENTS } from '@/lib/types';
@@ -141,10 +141,15 @@ function SettingsContent() {
     }
   }
 
-  async function handleDeactivate(user: User) {
-    if (!confirm(`Deactivate ${user.name}? They will lose access to the CRM.`)) return;
-    await usersApi.deactivate(user.id);
-    loadUsers();
+
+
+  async function handleToggleStatus(user: User) {
+    try {
+      await peopleApi.toggleStatus(user.id, !user.is_active);
+      setUsers(users.map(u => u.id === user.id ? { ...u, is_active: !user.is_active } : u));
+    } catch {
+      alert('Failed to update status');
+    }
   }
 
   async function handleSaveProfile() {
@@ -351,13 +356,29 @@ function SettingsContent() {
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)' }}>{u.designation || '—'}</td>
                         <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-muted)' }}>{u.employee_id || '—'}</td>
                         <td style={{ padding: '12px 16px' }}>
-                          <span style={{
-                            padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
-                            background: u.is_active ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                            color: u.is_active ? '#10B981' : '#EF4444',
-                          }}>
-                            {u.is_active ? 'Active' : 'Inactive'}
-                          </span>
+                          <label style={{ display: 'inline-flex', alignItems: 'center', cursor: u.id === currentUser?.id ? 'not-allowed' : 'pointer' }}>
+                            <div style={{
+                              position: 'relative', width: '36px', height: '20px',
+                              background: u.is_active ? 'var(--color-success)' : 'var(--text-muted)',
+                              borderRadius: '20px', transition: 'background 0.2s', opacity: u.id === currentUser?.id ? 0.5 : 1
+                            }}>
+                              <div style={{
+                                position: 'absolute', top: '2px', left: u.is_active ? '18px' : '2px',
+                                width: '16px', height: '16px', background: '#fff', borderRadius: '50%',
+                                transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                              }} />
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              style={{ display: 'none' }} 
+                              checked={u.is_active} 
+                              disabled={u.id === currentUser?.id}
+                              onChange={() => handleToggleStatus(u)} 
+                            />
+                            <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 600, color: u.is_active ? 'var(--color-success)' : 'var(--text-muted)' }}>
+                              {u.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </label>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', gap: '6px' }}>
@@ -367,14 +388,6 @@ function SettingsContent() {
                             >
                               Edit
                             </button>
-                            {u.id !== currentUser?.id && u.is_active && (
-                              <button
-                                onClick={() => handleDeactivate(u)}
-                                style={{ padding: '4px 10px', borderRadius: '5px', fontSize: '12px', fontWeight: 600, background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: 'none', cursor: 'pointer' }}
-                              >
-                                Deactivate
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { leadsApi, importExportApi } from '@/lib/api';
-import { Lead, PIPELINE_STAGES, LEAD_SOURCES, STAGE_COLORS } from '@/lib/types';
+import { leadsApi, importExportApi, peopleApi } from '@/lib/api';
+import { Lead, User, PIPELINE_STAGES, LEAD_SOURCES, STAGE_COLORS } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import LeadFormModal from '@/components/leads/LeadFormModal';
 
@@ -19,6 +19,7 @@ export default function LeadsPage() {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [importMsg, setImportMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [page, setPage] = useState(1);
+  const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const PAGE_SIZE = 50;
 
   const loadLeads = useCallback(async () => {
@@ -37,7 +38,10 @@ export default function LeadsPage() {
     }
   }, [page, search, stageFilter, sourceFilter, priorityFilter]);
 
-  useEffect(() => { loadLeads(); }, [loadLeads]);
+  useEffect(() => { 
+    loadLeads(); 
+    peopleApi.list().then(res => setTeamMembers(res.data)).catch(console.error);
+  }, [loadLeads]);
 
   async function handleExport() {
     const res = await importExportApi.exportCsv();
@@ -173,18 +177,25 @@ export default function LeadsPage() {
           <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>+ Add Lead</button>
         </div>
       ) : (
-        <div className="table-container">
-          <table className="table">
+        <div className="table-container" style={{ overflowX: 'auto' }}>
+          <table className="table" style={{ minWidth: '1600px' }}>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Company</th>
-                <th>Stage</th>
-                <th>Priority</th>
+                <th style={{ minWidth: '220px' }}>Name & Company</th>
+                <th style={{ minWidth: '150px' }}>Profile (Added By)</th>
+                <th style={{ minWidth: '140px' }}>Stage</th>
+                <th style={{ minWidth: '100px' }}>Priority</th>
+                <th>POC</th>
                 <th>Services</th>
                 <th>Budget</th>
                 <th>Source</th>
-                <th>Assigned To</th>
+                <th style={{ minWidth: '180px' }}>Assigned To</th>
+                <th style={{ minWidth: '150px' }}>Next Step</th>
+                <th>Next Step Date</th>
+                <th>Company Address</th>
+                <th>Company Phone</th>
+                <th>LinkedIn</th>
+                <th>Notes</th>
                 <th>Last Activity</th>
               </tr>
             </thead>
@@ -197,11 +208,15 @@ export default function LeadsPage() {
                 >
                   <td>
                     <div style={{ fontWeight: 600 }}>{lead.full_name}</div>
-                    {lead.email && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.email}</div>}
+                    {lead.company_name && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.company_name}</div>}
                   </td>
                   <td>
-                    <div>{lead.company_name || '—'}</div>
-                    {lead.city && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.city}</div>}
+                    {lead.added_by_user ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div className="avatar avatar-sm">{lead.added_by_user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}</div>
+                        <span style={{ fontSize: '12px' }}>{lead.added_by_user.name}</span>
+                      </div>
+                    ) : '—'}
                   </td>
                   <td>{stageBadge(lead.stage)}</td>
                   <td>
@@ -209,6 +224,7 @@ export default function LeadsPage() {
                       {lead.priority || 'Warm'}
                     </span>
                   </td>
+                  <td>{lead.poc_name || <span style={{ opacity: 0.4 }}>—</span>}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                       {lead.reputation_building && <span className="badge badge-info" style={{ fontSize: '10px' }}>LinkedIn</span>}
@@ -216,21 +232,47 @@ export default function LeadsPage() {
                     </div>
                   </td>
                   <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>
-                    {lead.budget ? `₹${lead.budget.toLocaleString('en-IN')}` : '—'}
+                    {lead.budget ? `₹${lead.budget.toLocaleString('en-IN')}` : <span style={{ opacity: 0.4 }}>—</span>}
                   </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{lead.source || '—'}</td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{lead.source || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <select
+                      className="form-control"
+                      style={{ padding: '4px 8px', fontSize: '12px', minWidth: '130px', height: '32px' }}
+                      value={lead.assigned_to || ''}
+                      onChange={async (e) => {
+                        try {
+                          await leadsApi.update(lead.id, { assigned_to: e.target.value || undefined });
+                          loadLeads();
+                        } catch (err) {
+                          console.error("Failed to assign lead", err);
+                        }
+                      }}
+                    >
+                      <option value="">Unassigned</option>
+                      {teamMembers.map(member => (
+                        <option key={member.id} value={member.id}>{member.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td style={{ fontSize: '12px' }}>{lead.next_step || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                  <td style={{ fontSize: '12px' }}>{lead.next_step_date ? new Date(lead.next_step_date).toLocaleDateString() : <span style={{ opacity: 0.4 }}>—</span>}</td>
+                  <td style={{ fontSize: '12px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.company_address || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                  <td style={{ fontSize: '12px' }}>{lead.phone || <span style={{ opacity: 0.4 }}>—</span>}</td>
                   <td>
-                    {lead.assigned_user ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div className="avatar avatar-sm">{lead.assigned_user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}</div>
-                        <span style={{ fontSize: '12px' }}>{lead.assigned_user.name}</span>
-                      </div>
-                    ) : <span style={{ color: 'var(--text-muted)' }}>Unassigned</span>}
+                    {lead.linkedin_url ? (
+                      <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--brand-accent)' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                      </a>
+                    ) : <span style={{ opacity: 0.4 }}>—</span>}
+                  </td>
+                  <td style={{ fontSize: '12px', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={lead.general_notes || ''}>
+                    {lead.general_notes || <span style={{ opacity: 0.4 }}>—</span>}
                   </td>
                   <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                     {lead.last_activity_at
                       ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
-                      : '—'}
+                      : <span style={{ opacity: 0.4 }}>—</span>}
                   </td>
                 </tr>
               ))}

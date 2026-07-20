@@ -23,7 +23,7 @@ async def import_leads_csv(
     """
     Import leads from a CSV file.
     Expected columns: full_name, phone, email, company_name, company_industry,
-                      city, budget, source, priority, stage, tags
+                      city, budget, source, priority, stage, tags, linkedin_url, company_address, poc_name, general_notes
     """
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files accepted")
@@ -77,6 +77,12 @@ async def import_leads_csv(
                 priority=priority,
                 stage=stage,
                 tags=tags,
+                linkedin_url=row.get("linkedin_url", "").strip() or None,
+                company_address=row.get("company_address", "").strip() or None,
+                poc_name=row.get("poc_name", "").strip() or None,
+                general_notes=row.get("general_notes", "").strip() or None,
+                tenant_id=current_user.tenant_id,
+                added_by_id=current_user.id,
             )
             db.add(lead)
             db.flush()
@@ -115,6 +121,7 @@ def export_leads_csv(
     fieldnames = [
         "full_name", "phone", "email", "company_name", "company_industry",
         "city", "stage", "priority", "source", "budget", "tags",
+        "linkedin_url", "company_address", "poc_name", "general_notes",
         "reputation_building", "custom_ai_agent", "is_lost", "lost_reason",
         "created_at", "last_activity_at",
     ]
@@ -134,6 +141,10 @@ def export_leads_csv(
             "source": lead.source.value if lead.source else "",
             "budget": lead.budget or "",
             "tags": ", ".join(lead.tags) if lead.tags else "",
+            "linkedin_url": lead.linkedin_url or "",
+            "company_address": lead.company_address or "",
+            "poc_name": lead.poc_name or "",
+            "general_notes": lead.general_notes or "",
             "reputation_building": lead.reputation_building,
             "custom_ai_agent": lead.custom_ai_agent,
             "is_lost": lead.is_lost,

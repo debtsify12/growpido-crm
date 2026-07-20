@@ -61,6 +61,13 @@ def _run_manual_migrations():
         ("users", "updated_at", "TIMESTAMP"),
         # Leads table
         ("leads", "tenant_id", "TEXT REFERENCES tenants(id)"),
+        ("leads", "linkedin_url", "TEXT"),
+        ("leads", "company_address", "TEXT"),
+        ("leads", "poc_name", "TEXT"),
+        ("leads", "added_by_id", "TEXT REFERENCES users(id)"),
+        ("leads", "next_step", "TEXT"),
+        ("leads", "next_step_date", "TIMESTAMP"),
+        ("leads", "general_notes", "TEXT"),
         # Tasks table
         ("tasks", "tenant_id", "TEXT REFERENCES tenants(id)"),
         # Notes table

@@ -105,6 +105,7 @@ export const peopleApi = {
   departments: () => api.get<string[]>('/api/people/departments'),
   get: (id: string) => api.get<User>(`/api/people/${id}`),
   stats: (id: string) => api.get<PersonStats>(`/api/people/${id}/stats`),
+  toggleStatus: (id: string, is_active: boolean) => api.patch<User>(`/api/people/${id}/toggle-status`, { is_active }),
   leads: (id: string, params?: { stage?: string; limit?: number }) =>
     api.get(`/api/people/${id}/leads`, { params }),
   tasks: (id: string, params?: { is_done?: boolean; limit?: number }) =>

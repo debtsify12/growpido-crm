@@ -12,6 +12,10 @@ from app.models.work_log import WorkLog
 from app.schemas.user import UserResponse, UserPublic
 from app.schemas.work_log import WorkLogCreate, WorkLogResponse
 from app.core.auth import get_current_user, get_admin_user
+from pydantic import BaseModel
+
+class ToggleStatusRequest(BaseModel):
+    is_active: bool
 
 router = APIRouter(prefix="/api/people", tags=["people"])
 

@@ -21,6 +21,9 @@ export default function LeadFormModal({ onClose, onSaved, initialStage }: Props)
     company_name: '',
     company_industry: '',
     city: '',
+    company_address: '',
+    linkedin_url: '',
+    poc_name: '',
     budget: '',
     source: '' as LeadSource | '',
     priority: 'Warm',
@@ -91,7 +94,22 @@ export default function LeadFormModal({ onClose, onSaved, initialStage }: Props)
                 </div>
                 <div className="form-group">
                   <label className="form-label">City</label>
-                  <input className="form-control" placeholder="Mumbai" value={form.city} onChange={(e) => set('city', e.target.value)} />
+                  <input className="form-control" value={form.city} onChange={(e) => set('city', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Company Address</label>
+                  <input className="form-control" value={form.company_address} onChange={(e) => set('company_address', e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Point of Contact (POC)</label>
+                  <input className="form-control" value={form.poc_name} onChange={(e) => set('poc_name', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">LinkedIn URL</label>
+                  <input className="form-control" placeholder="https://linkedin.com/in/..." value={form.linkedin_url} onChange={(e) => set('linkedin_url', e.target.value)} />
                 </div>
               </div>
             </div>

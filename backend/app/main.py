@@ -68,34 +68,25 @@ def _seed_default_tenant_and_super_admin():
         # 3. Migrate any existing users without tenant_id to the default tenant
         unassigned_users = db.query(User).filter(
             User.tenant_id.is_(None),
-            User.role != UserRole.super_admin,
+            User.role != UserRole.super_admin
         ).all()
-
-        for user in unassigned_users:
-            user.tenant_id = default_tenant.id
-            if user.role == UserRole.member:
-                # Old 'admin' role maps to new 'admin'
-                pass
-
+        for u in unassigned_users:
+            u.tenant_id = default_tenant.id
+        if unassigned_users:
+            db.commit()
+            print(f"Migrated {len(unassigned_users)} users to default tenant.")
+            
         # 4. Migrate existing leads, tasks, notes, activities to default tenant
         from app.models.lead import Lead
         from app.models.task import Task
         from app.models.note import Note
         from app.models.activity import Activity
-
-        db.query(Lead).filter(Lead.tenant_id.is_(None)).update(
-            {"tenant_id": default_tenant.id}
-        )
-        db.query(Task).filter(Task.tenant_id.is_(None)).update(
-            {"tenant_id": default_tenant.id}
-        )
-        db.query(Note).filter(Note.tenant_id.is_(None)).update(
-            {"tenant_id": default_tenant.id}
-        )
-        db.query(Activity).filter(Activity.tenant_id.is_(None)).update(
-            {"tenant_id": default_tenant.id}
-        )
-
+        
+        for model, name in [(Lead, "leads"), (Task, "tasks"), (Note, "notes"), (Activity, "activities")]:
+            db.query(model).filter(model.tenant_id.is_(None)).update(
+                {"tenant_id": default_tenant.id}, synchronize_session=False
+            )
+        db.commit()
         # 5. Create default admin if no tenant admin exists
         existing_admin = db.query(User).filter(
             User.tenant_id == default_tenant.id,
