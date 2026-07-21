@@ -70,7 +70,10 @@ export default function TaskFormModal({ onClose, onSaved }: Props) {
           boxShadow: '0 24px 48px -12px rgba(0,0,0,0.18)',
           border: '1px solid rgba(255,255,255,0.8)',
           animation: 'modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column'
         }} 
         onClick={(e) => e.stopPropagation()}
       >
@@ -92,8 +95,8 @@ export default function TaskFormModal({ onClose, onSaved }: Props) {
           >✕</button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <div style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto', flex: 1 }}>
             {error && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-danger)', fontSize: '13px', fontWeight: 500, background: 'rgba(239, 68, 68, 0.1)', padding: '12px 16px', borderRadius: '8px', borderLeft: '4px solid var(--color-danger)' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>

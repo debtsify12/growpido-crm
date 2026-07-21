@@ -145,7 +145,7 @@ function SettingsContent() {
 
   async function handleToggleStatus(user: User) {
     try {
-      await peopleApi.toggleStatus(user.id, !user.is_active);
+      await usersApi.update(user.id, { is_active: !user.is_active });
       setUsers(users.map(u => u.id === user.id ? { ...u, is_active: !user.is_active } : u));
     } catch {
       alert('Failed to update status');

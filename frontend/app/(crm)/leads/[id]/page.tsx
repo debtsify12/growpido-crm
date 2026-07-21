@@ -32,6 +32,7 @@ export default function LeadProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Lead>>({});
   const [saving, setSaving] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -135,9 +136,20 @@ export default function LeadProfilePage() {
                     <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{lead.company_name || 'No company'}</div>
                   </div>
                 </div>
-                <button className="btn btn-secondary btn-sm" onClick={() => setEditMode(!editMode)}>
-                  {editMode ? '✕ Cancel' : 'Edit Profile'}
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => setEditMode(!editMode)}>
+                    {editMode ? '✕ Cancel' : 'Edit Profile'}
+                  </button>
+                  {!editMode && (
+                    <button 
+                      className="btn btn-sm" 
+                      style={{ color: 'var(--color-danger)', border: '1px solid var(--color-danger)', background: 'transparent' }}
+                      onClick={() => setShowDeleteModal(true)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Stage selector */}
@@ -382,6 +394,38 @@ export default function LeadProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setShowDeleteModal(false)}>
+          <div className="card" style={{ padding: '32px', borderRadius: '24px', maxWidth: '400px', width: '100%', boxShadow: '0 24px 48px -12px rgba(0,0,0,0.2)', textAlign: 'center', animation: 'modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            </div>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Delete Lead?</h3>
+            <p style={{ margin: '0 0 32px 0', fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Are you sure you want to delete <strong>{lead.full_name}</strong>? This action cannot be undone and all associated notes, tasks, and activities will be permanently removed.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: '12px', borderRadius: '12px', fontWeight: 600, fontSize: '15px', background: 'var(--bg-surface)', border: '1px solid var(--border)' }} onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              <button 
+                className="btn" 
+                style={{ flex: 1, padding: '12px', borderRadius: '12px', fontWeight: 600, fontSize: '15px', background: 'var(--color-danger)', color: 'white', border: 'none', boxShadow: '0 8px 16px -4px rgba(239, 68, 68, 0.4)' }}
+                onClick={async () => {
+                  try {
+                    await leadsApi.delete(id);
+                    router.push('/leads');
+                  } catch (err) {
+                    alert('Failed to delete lead.');
+                  }
+                }}
+              >
+                Delete Lead
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
