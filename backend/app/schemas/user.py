@@ -60,6 +60,7 @@ class UserPublic(BaseModel):
     department: Optional[str] = None
     designation: Optional[str] = None
     employee_id: Optional[str] = None
+    is_active: bool
 
     class Config:
         from_attributes = True

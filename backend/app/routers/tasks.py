@@ -32,9 +32,13 @@ def list_tasks(
         .options(joinedload(Task.lead), joinedload(Task.assigned_user))
     )
 
-    # Members see only their tasks
-    if current_user.role == UserRole.member:
-        query = query.filter(Task.assigned_to == current_user.id)
+    # Enforce tenant isolation
+    from app.models.user import UserRole
+    if current_user.role != UserRole.super_admin:
+        query = query.filter(Task.tenant_id == current_user.tenant_id)
+        # Members see only their tasks
+        if current_user.role == UserRole.member:
+            query = query.filter(Task.assigned_to == current_user.id)
 
     if is_done is not None:
         query = query.filter(Task.is_done == is_done)
@@ -61,7 +65,11 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    task = Task(**payload.model_dump(), is_auto_created=False)
+    task = Task(
+        **payload.model_dump(), 
+        is_auto_created=False, 
+        tenant_id=current_user.tenant_id
+    )
     db.add(task)
 
     # Log task creation activity if linked to lead
@@ -107,6 +115,11 @@ def get_task(
     )
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    from app.models.user import UserRole
+    if current_user.role != UserRole.super_admin and task.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+        
     return task
 
 
@@ -121,6 +134,10 @@ def update_task(
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    from app.models.user import UserRole
+    if current_user.role != UserRole.super_admin and task.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     update_data = payload.model_dump(exclude_unset=True)
     was_done = task.is_done
@@ -157,6 +174,11 @@ def delete_task(
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    from app.models.user import UserRole
+    if current_user.role != UserRole.super_admin and task.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+        
     db.delete(task)
     db.commit()
     return {"message": "Task deleted"}

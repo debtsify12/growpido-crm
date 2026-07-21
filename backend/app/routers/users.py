@@ -16,8 +16,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List users in tenant — super_admin sees all."""
-    query = db.query(User).filter(User.is_active == True)
+    query = db.query(User)
 
     if current_user.role != UserRole.super_admin:
         query = query.filter(User.tenant_id == current_user.tenant_id)

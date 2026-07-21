@@ -31,60 +31,32 @@ def get_db():
         db.close()
 
 
-def create_all_tables():
-    """Create all tables — called on startup."""
+def run_migrations():
+    """Run Alembic migrations automatically on startup."""
+    import subprocess
+    import sys
+    from sqlalchemy import inspect
+
+    # Create tables for brand new databases
     from app.models import tenant, user, lead, task, note, activity, work_log  # noqa: F401
     try:
         Base.metadata.create_all(bind=engine)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error creating tables: {e}")
 
-    # Add new columns to existing tables if they don't exist (works for both SQLite and Postgres)
-    _run_manual_migrations()
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
 
+        # Command to run alembic using the current python executable
+        alembic_cmd = [sys.executable, "-c", "from alembic.config import main; main()"]
 
-def _run_manual_migrations():
-    """Add missing columns to existing tables without dropping data."""
-    from sqlalchemy import inspect
-    inspector = inspect(engine)
-    
-    migrations = [
-        # Tenants table already created fresh — no migration needed
-        # Users table
-        ("users", "tenant_id", "TEXT REFERENCES tenants(id)"),
-        ("users", "employee_id", "TEXT"),
-        ("users", "phone", "TEXT"),
-        ("users", "department", "TEXT"),
-        ("users", "designation", "TEXT"),
-        ("users", "bio", "TEXT"),
-        ("users", "join_date", "TIMESTAMP"),
-        ("users", "updated_at", "TIMESTAMP"),
-        # Leads table
-        ("leads", "tenant_id", "TEXT REFERENCES tenants(id)"),
-        ("leads", "linkedin_url", "TEXT"),
-        ("leads", "company_address", "TEXT"),
-        ("leads", "poc_name", "TEXT"),
-        ("leads", "added_by_id", "TEXT REFERENCES users(id)"),
-        ("leads", "next_step", "TEXT"),
-        ("leads", "next_step_date", "TIMESTAMP"),
-        ("leads", "general_notes", "TEXT"),
-        # Tasks table
-        ("tasks", "tenant_id", "TEXT REFERENCES tenants(id)"),
-        # Notes table
-        ("notes", "tenant_id", "TEXT REFERENCES tenants(id)"),
-        # Activities table
-        ("activities", "tenant_id", "TEXT REFERENCES tenants(id)"),
-    ]
+        # If the database already had tables but isn't tracked by Alembic, stamp it
+        if "users" in tables and "alembic_version" not in tables:
+            print("Adopting existing database for Alembic...")
+            subprocess.run(alembic_cmd + ["stamp", "head"], check=False)
 
-    with engine.connect() as conn:
-        for table, column, col_type in migrations:
-            try:
-                # Check if column exists
-                columns = [col['name'] for col in inspector.get_columns(table)]
-                if column not in columns:
-                    # In autocommit block so Postgres doesn't abort transaction
-                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
-                    conn.commit()
-            except Exception as e:
-                print(f"Migration error for {table}.{column}: {e}")
-                conn.rollback()
+        print("Running Alembic migrations...")
+        subprocess.run(alembic_cmd + ["upgrade", "head"], check=False)
+    except Exception as e:
+        print(f"Migration error (ignored): {e}")

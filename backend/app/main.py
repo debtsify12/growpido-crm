@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.database import create_all_tables
+from app.database import run_migrations
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.routers import auth, leads, tasks, notes, users, dashboard, import_export, content
 from app.routers import tenants, people
@@ -15,7 +15,7 @@ from app.routers import tenants, people
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    create_all_tables()
+    run_migrations()
     _seed_default_tenant_and_super_admin()
     start_scheduler()
     yield
