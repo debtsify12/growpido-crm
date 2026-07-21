@@ -18,8 +18,9 @@ export default function ContentStrategistPage() {
     try {
       const response = await contentApi.analyze(content);
       setResult(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'An error occurred while analyzing the content.');
+    } catch (err) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
+      setError(errorObj.response?.data?.detail || 'An error occurred while analyzing the content.');
     } finally {
       setLoading(false);
     }
