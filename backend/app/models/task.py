@@ -12,6 +12,7 @@ class TaskType(str, enum.Enum):
     email = "Email"
     meeting = "Meeting"
     onboarding = "Onboarding"
+    content_strategist = "Content Strategist"
     other = "Other"
 
 

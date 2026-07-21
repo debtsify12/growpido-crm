@@ -112,7 +112,7 @@ export interface LeadListResponse {
 
 // ─── Task Types ───────────────────────────────────────────────────────────────
 
-export type TaskType = 'Follow Up' | 'Call' | 'Email' | 'Meeting' | 'Onboarding' | 'Other';
+export type TaskType = 'Follow Up' | 'Call' | 'Email' | 'Meeting' | 'Onboarding' | 'Content Strategist' | 'Other';
 
 export interface Task {
   id: string;
