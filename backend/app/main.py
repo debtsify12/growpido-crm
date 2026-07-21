@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.database import create_all_tables
 from app.services.scheduler import start_scheduler, stop_scheduler
-from app.routers import auth, leads, tasks, notes, users, dashboard, import_export
+from app.routers import auth, leads, tasks, notes, users, dashboard, import_export, content
 from app.routers import tenants, people
 
 
@@ -36,8 +36,17 @@ def _seed_default_tenant_and_super_admin():
     from app.models.user import User, UserRole
     from app.core.auth import get_password_hash
 
+    from sqlalchemy import text
+
     db = SessionLocal()
     try:
+        if db.bind.dialect.name == "postgresql":
+            try:
+                with db.bind.execution_options(isolation_level="AUTOCOMMIT").connect() as conn:
+                    conn.execute(text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'super_admin'"))
+            except Exception as e:
+                print(f"Enum patch error (ignored): {e}")
+
         # 1. Create default tenant if it doesn't exist
         default_tenant = db.query(Tenant).filter(Tenant.slug == "growpido").first()
         if not default_tenant:
@@ -140,6 +149,7 @@ app.include_router(tasks.router)
 app.include_router(notes.router)
 app.include_router(dashboard.router)
 app.include_router(import_export.router)
+app.include_router(content.router)
 
 
 @app.get("/")

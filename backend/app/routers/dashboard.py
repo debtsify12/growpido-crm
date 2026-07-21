@@ -122,7 +122,7 @@ def get_source_breakdown(
         .all()
     )
     return [
-        {"source": r.source.value if r.source else "Unknown", "count": r.count}
+        {"source": r.source.value if hasattr(r.source, "value") else (r.source if r.source else "Unknown"), "count": r.count}
         for r in results
     ]
 

@@ -160,4 +160,10 @@ export const importExportApi = {
     api.get('/api/export/csv', { responseType: 'blob' }),
 };
 
+// ─── Content Strategist ───────────────────────────────────────────────────────
+
+export const contentApi = {
+  analyze: (content: string) => api.post<{score: number, verdict: string, suggestions: string[]}>('/api/content/analyze', { content }),
+};
+
 export default api;
