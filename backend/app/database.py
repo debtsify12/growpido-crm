@@ -35,28 +35,47 @@ def run_migrations():
     """Run Alembic migrations automatically on startup."""
     import subprocess
     import sys
+    import os
+    import time
+    import tempfile
     from sqlalchemy import inspect
 
-    # Create tables for brand new databases
-    from app.models import tenant, user, lead, task, note, activity, work_log  # noqa: F401
+    # Concurrency lock for Gunicorn multi-worker environment
+    lock_dir = os.path.join(tempfile.gettempdir(), "growpido_migration.lock")
     try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        print(f"Error creating tables: {e}")
+        os.mkdir(lock_dir)
+    except FileExistsError:
+        print("Another worker is currently running migrations. Waiting...")
+        time.sleep(10)
+        return
 
     try:
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
+        # Create tables for brand new databases
+        from app.models import tenant, user, lead, task, note, activity, work_log  # noqa: F401
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as e:
+            print(f"Error creating tables: {e}")
 
-        # Command to run alembic using the current python executable
-        alembic_cmd = [sys.executable, "-c", "from alembic.config import main; main()"]
+        try:
+            inspector = inspect(engine)
+            tables = inspector.get_table_names()
 
-        # If the database already had tables but isn't tracked by Alembic, stamp it
-        if "users" in tables and "alembic_version" not in tables:
-            print("Adopting existing database for Alembic...")
-            subprocess.run(alembic_cmd + ["stamp", "head"], check=False)
+            # Command to run alembic using the current python executable
+            alembic_cmd = [sys.executable, "-c", "from alembic.config import main; main()"]
 
-        print("Running Alembic migrations...")
-        subprocess.run(alembic_cmd + ["upgrade", "head"], check=False)
-    except Exception as e:
-        print(f"Migration error (ignored): {e}")
+            # If the database already had tables but isn't tracked by Alembic, stamp it
+            if "users" in tables and "alembic_version" not in tables:
+                print("Adopting existing database for Alembic...")
+                subprocess.run(alembic_cmd + ["stamp", "head"], check=False)
+
+            print("Running Alembic migrations...")
+            subprocess.run(alembic_cmd + ["upgrade", "head"], check=False)
+        except Exception as e:
+            print(f"Migration error (ignored): {e}")
+    finally:
+        # Clean up lock
+        try:
+            os.rmdir(lock_dir)
+        except Exception:
+            pass
