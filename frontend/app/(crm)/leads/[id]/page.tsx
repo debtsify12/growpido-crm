@@ -415,7 +415,7 @@ export default function LeadProfilePage() {
                   try {
                     await leadsApi.delete(id);
                     router.push('/leads');
-                  } catch (err) {
+                  } catch {
                     alert('Failed to delete lead.');
                   }
                 }}

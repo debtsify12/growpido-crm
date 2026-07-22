@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { usersApi, peopleApi } from '@/lib/api';
+import { usersApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import type { User } from '@/lib/types';
 import { DEPARTMENTS } from '@/lib/types';

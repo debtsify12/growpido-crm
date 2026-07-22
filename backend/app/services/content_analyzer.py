@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from app.core.config import settings
 
 # Mock top posts dataset (could be moved to DB later)
 TOP_LINKEDIN_POSTS = [
@@ -31,15 +32,31 @@ class ContentAnalysisResponse(BaseModel):
     score: int
     verdict: str
     suggestions: list[str]
+    hooks: list[str] = []
+
+SYSTEM_PROMPT = (
+    "You are an expert LinkedIn Content Strategist. Your job is to analyze draft LinkedIn posts "
+    "and provide:\n"
+    "1. An overall quality score (0-100)\n"
+    "2. A verdict (e.g., 'Excellent', 'Good', 'Needs Work', 'Poor')\n"
+    "3. 3-5 specific, actionable suggestions for improvement\n"
+    "4. 3 alternative, high-converting opening hook ideas (catchy 1-2 sentence intros) tailored specifically for this draft.\n\n"
+    "Use the following examples of highly successful LinkedIn posts as a baseline for what works "
+    "(strong hooks, clear value, storytelling, readability):\n{top_posts}\n\n{format_instructions}"
+)
+
+USER_PROMPT = "Analyze this draft:\n\n{draft_content}"
 
 def analyze_linkedin_content(draft_content: str) -> ContentAnalysisResponse:
-    # Check for API key
-    api_key = os.environ.get("OPENAI_API_KEY")
-    
+    # Check for OpenRouter / OpenAI API key
+    api_key = os.environ.get("OPENROUTER_API_KEY") or getattr(settings, "OPENROUTER_API_KEY", "") or os.environ.get("OPENAI_API_KEY")
+    base_url = os.environ.get("OPENROUTER_BASE_URL") or getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    model_name = os.environ.get("CONTENT_STRATEGIST_MODEL") or getattr(settings, "CONTENT_STRATEGIST_MODEL", "openai/gpt-3.5-turbo")
+
     if not api_key:
         # Fallback/Mock mode if no API key is provided
         score = 50
-        suggestions = ["Add an OPENAI_API_KEY to your .env to enable real AI scoring!"]
+        suggestions = ["Add an OPENROUTER_API_KEY to your .env to enable real AI scoring via OpenRouter!"]
         
         words = len(draft_content.split())
         if words < 10:
@@ -57,17 +74,32 @@ def analyze_linkedin_content(draft_content: str) -> ContentAnalysisResponse:
         return ContentAnalysisResponse(
             score=score,
             verdict=verdict,
-            suggestions=suggestions
+            suggestions=suggestions,
+            hooks=[
+                "Most people get this completely wrong. Here's why:",
+                "The $3.9B industry secret nobody in banking wants to discuss:",
+                "3 brutal truths about build vs buy that took me 5 years to learn:"
+            ]
         )
     
-    llm = ChatOpenAI(api_key=api_key, model="gpt-3.5-turbo", temperature=0.7)
+    # Initialize ChatOpenAI pointing to OpenRouter API endpoint
+    llm = ChatOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        model=model_name,
+        temperature=0.7,
+        default_headers={
+            "HTTP-Referer": getattr(settings, "FRONTEND_URL", "http://localhost:3000"),
+            "X-Title": getattr(settings, "APP_NAME", "Growpido CRM"),
+        }
+    )
     
     # Set up the Pydantic parser
     parser = PydanticOutputParser(pydantic_object=ContentAnalysisResponse)
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert LinkedIn Content Strategist. Your job is to analyze draft LinkedIn posts and provide a score (0-100), a verdict (e.g., 'Excellent', 'Good', 'Needs Work', 'Poor'), and 3-5 specific, actionable suggestions for improvement.\n\nUse the following examples of highly successful LinkedIn posts as a baseline for what works (strong hooks, clear value, storytelling, readability):\n{top_posts}\n\n{format_instructions}"),
-        ("user", "Analyze this draft:\n\n{draft_content}")
+        ("system", SYSTEM_PROMPT),
+        ("user", USER_PROMPT)
     ])
     
     chain = prompt | llm | parser
@@ -83,7 +115,8 @@ def analyze_linkedin_content(draft_content: str) -> ContentAnalysisResponse:
         return ContentAnalysisResponse(
             score=0,
             verdict="Error",
-            suggestions=[f"An error occurred while analyzing the content: {str(e)}"]
+            suggestions=[f"An error occurred while analyzing the content via OpenRouter: {str(e)}"],
+            hooks=[]
         )
 
 

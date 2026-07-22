@@ -163,7 +163,7 @@ export const importExportApi = {
 // ─── Content Strategist ───────────────────────────────────────────────────────
 
 export const contentApi = {
-  analyze: (content: string) => api.post<{score: number, verdict: string, suggestions: string[]}>('/api/content/analyze', { content }),
+  analyze: (content: string) => api.post<{score: number, verdict: string, suggestions: string[], hooks?: string[]}>('/api/content/analyze', { content }),
 };
 
 export default api;

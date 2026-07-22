@@ -3,7 +3,7 @@ from app.core.auth import get_current_user
 from app.models.user import User
 from app.services.content_analyzer import analyze_linkedin_content, ContentAnalysisRequest, ContentAnalysisResponse
 
-router = APIRouter(prefix="/content", tags=["Content Strategist"])
+router = APIRouter(prefix="/api/content", tags=["Content Strategist"])
 
 @router.post("/analyze", response_model=ContentAnalysisResponse)
 async def analyze_content(

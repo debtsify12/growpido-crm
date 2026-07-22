@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "noreply@growpido.com"
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # OpenRouter / LLM Settings
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    CONTENT_STRATEGIST_MODEL: str = "openai/gpt-3.5-turbo"
+
     class Config:
         env_file = ".env"
         extra = "ignore"
