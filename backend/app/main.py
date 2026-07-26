@@ -14,6 +14,12 @@ from app.routers import tenants, people, personas
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # TEMPORARY: Reset the entire database (Drop all tables)
+    import logging
+    logging.warning("DROPPING ALL TABLES TO RESET DATABASE!")
+    from app.database import Base, engine
+    Base.metadata.drop_all(bind=engine)
+    
     # Startup
     run_migrations()
     _seed_default_tenant_and_super_admin()
