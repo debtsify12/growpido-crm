@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { contentApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { contentApi, personaApi } from '@/lib/api';
 
 const SAMPLE_POST = `Mahindra Bank is worth about 3.8 lakh Cr and Axis Bank about 3.9 lakh Cr.
 
@@ -25,6 +25,36 @@ export default function ContentStrategistPage() {
   const [appliedHookIndex, setAppliedHookIndex] = useState<number | null>(null);
   const [toast, setToast] = useState('');
   const [activeTab, setActiveTab] = useState<'analysis' | 'hooks'>('analysis');
+  const [personaContext, setPersonaContext] = useState('');
+  const [inputTab, setInputTab] = useState<'draft' | 'persona'>('draft');
+  const [personas, setPersonas] = useState<any[]>([]);
+  const [personaName, setPersonaName] = useState('');
+
+  useEffect(() => {
+    personaApi.getPersonas()
+      .then(res => setPersonas(res.data))
+      .catch(console.error);
+  }, []);
+
+  const handleSavePersona = async () => {
+    if (!personaName.trim() || !personaContext.trim()) {
+      showToast('Name and context required to save!');
+      return;
+    }
+    try {
+      const res = await personaApi.createPersona({ name: personaName, context: personaContext });
+      setPersonas([...personas, res.data]);
+      showToast('Persona saved successfully!');
+      setPersonaName('');
+    } catch (err) {
+      showToast('Failed to save persona.');
+    }
+  };
+
+  const handleSelectPersona = (p: any) => {
+    setPersonaContext(p.context);
+    showToast(`Selected persona: ${p.name}`);
+  };
 
   // Real-time calculations
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
@@ -44,7 +74,7 @@ export default function ContentStrategistPage() {
     setResult(null);
 
     try {
-      const response = await contentApi.analyze(content);
+      const response = await contentApi.analyze(content, personaContext);
       setResult(response.data);
       setActiveTab('analysis');
     } catch (err) {
@@ -87,6 +117,7 @@ export default function ContentStrategistPage() {
 
   const handleClear = () => {
     setContent('');
+    setPersonaContext('');
     setResult(null);
     setError('');
   };
@@ -196,74 +227,202 @@ export default function ContentStrategistPage() {
           flexDirection: 'column',
           gap: '16px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>Draft Post</span>
-            </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <button
+                onClick={() => setInputTab('draft')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px 8px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: inputTab === 'draft' ? 'var(--text-primary)' : 'var(--text-muted)',
+                  borderBottom: inputTab === 'draft' ? '2px solid #10B981' : '2px solid transparent',
+                  cursor: 'pointer'
+                }}
+              >
+                Draft Post
+              </button>
+              <button
+                onClick={() => setInputTab('persona')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px 8px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: inputTab === 'persona' ? 'var(--text-primary)' : 'var(--text-muted)',
+                  borderBottom: inputTab === 'persona' ? '2px solid #10B981' : '2px solid transparent',
+                  cursor: 'pointer'
+                }}
+              >
+                Persona / Skill
+              </button>
+            </div>
 
             {/* Live Stats Pills */}
-            <div style={{ display: 'flex', gap: '10px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
-              <span style={{ padding: '3px 8px', borderRadius: '6px', background: 'var(--surface-hover)' }}>
-                📝 {wordCount} words
-              </span>
-              <span style={{ padding: '3px 8px', borderRadius: '6px', background: 'var(--surface-hover)' }}>
-                🔤 {charCount} chars
-              </span>
-              <span style={{ padding: '3px 8px', borderRadius: '6px', background: 'var(--surface-hover)' }}>
-                ⏱️ {readTimeSec}s read
-              </span>
-            </div>
+            {inputTab === 'draft' && (
+              <div style={{ display: 'flex', gap: '10px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                <span style={{ padding: '3px 8px', borderRadius: '6px', background: 'var(--surface-hover)' }}>
+                  📝 {wordCount} words
+                </span>
+                <span style={{ padding: '3px 8px', borderRadius: '6px', background: 'var(--surface-hover)' }}>
+                  🔤 {charCount} chars
+                </span>
+                <span style={{ padding: '3px 8px', borderRadius: '6px', background: 'var(--surface-hover)' }}>
+                  ⏱️ {readTimeSec}s read
+                </span>
+              </div>
+            )}
           </div>
 
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Write or paste your LinkedIn post here... (Click 'Load Sample Post' to test instantly)"
-            style={{
-              width: '100%',
-              minHeight: '260px',
-              padding: '18px',
-              borderRadius: '14px',
-              border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              color: 'var(--text-primary)',
-              fontSize: '15px',
-              fontFamily: 'inherit',
-              lineHeight: 1.65,
-              resize: 'vertical',
-              outline: 'none',
-              transition: 'all 0.2s ease',
-              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = 'var(--brand-primary)';
-              e.target.style.background = 'white';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = 'var(--border)';
-              e.target.style.background = 'var(--surface)';
-            }}
-          />
+          {inputTab === 'draft' ? (
+            <>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Write or paste your LinkedIn post here... (Click 'Load Sample Post' to test instantly)"
+                style={{
+                  width: '100%',
+                  minHeight: '260px',
+                  padding: '18px',
+                  borderRadius: '14px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-primary)',
+                  fontSize: '15px',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.65,
+                  resize: 'vertical',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#10B981';
+                  e.target.style.background = 'white';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--border)';
+                  e.target.style.background = 'var(--surface)';
+                }}
+              />
 
-          {/* Real-time Content Health Bar */}
-          {content.trim().length > 0 && (
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'center',
-              fontSize: '13px',
-              padding: '10px 14px',
-              borderRadius: '10px',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)'
-            }}>
-              <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Format Check:</span>
-              <span style={{ color: wordCount >= 30 ? '#10B981' : '#F59E0B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {wordCount >= 30 ? '✓ Good length' : '⚠️ Short post'}
-              </span>
-              <span style={{ color: hasLineBreaks ? '#10B981' : '#F59E0B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {hasLineBreaks ? '✓ Clear line breaks' : '⚠️ Add line breaks'}
-              </span>
+              {/* Real-time Content Health Bar */}
+              {content.trim().length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'center',
+                  fontSize: '13px',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)'
+                }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Format Check:</span>
+                  <span style={{ color: wordCount >= 30 ? '#10B981' : '#F59E0B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {wordCount >= 30 ? '✓ Good length' : '⚠️ Short post'}
+                  </span>
+                  <span style={{ color: hasLineBreaks ? '#10B981' : '#F59E0B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {hasLineBreaks ? '✓ Clear line breaks' : '⚠️ Add line breaks'}
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Saved Personas List */}
+              {personas.length > 0 && (
+                <div style={{ padding: '12px', background: 'var(--surface-hover)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-secondary)' }}>Saved Personas:</div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {personas.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => handleSelectPersona(p)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          background: 'white',
+                          border: '1px solid var(--border)',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          color: 'var(--text-primary)'
+                        }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Persona Context Input */}
+              <textarea
+                value={personaContext}
+                onChange={(e) => setPersonaContext(e.target.value)}
+                placeholder="Describe the author's persona, formatting rules, or specific tone here... (e.g. 'Write like an experienced B2B SaaS founder, use short sentences, avoid emojis, be slightly controversial')"
+                style={{
+                  width: '100%',
+                  minHeight: '200px',
+                  padding: '18px',
+                  borderRadius: '14px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-primary)',
+                  fontSize: '15px',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.65,
+                  resize: 'vertical',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#10B981';
+                  e.target.style.background = 'white';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--border)';
+                  e.target.style.background = 'var(--surface)';
+                }}
+              />
+
+              {/* Save Controls */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Persona Name (e.g. Alex Hormozi Style)"
+                  value={personaName}
+                  onChange={e => setPersonaName(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                    fontSize: '14px',
+                    outline: 'none'
+                  }}
+                />
+                <button
+                  onClick={handleSavePersona}
+                  disabled={!personaName.trim() || !personaContext.trim()}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    background: (!personaName.trim() || !personaContext.trim()) ? 'var(--border)' : '#10B981',
+                    color: (!personaName.trim() || !personaContext.trim()) ? 'var(--text-muted)' : 'white',
+                    border: 'none',
+                    fontWeight: 600,
+                    cursor: (!personaName.trim() || !personaContext.trim()) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Save Persona
+                </button>
+              </div>
             </div>
           )}
 

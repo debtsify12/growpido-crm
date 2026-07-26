@@ -32,9 +32,9 @@ python run.py
 # Docs at http://localhost:8000/docs
 ```
 
-**Default admin** is auto-created on first run:
-- Email: `admin@growpido.com`
-- Password: `Growpido@2024`
+**Super admin** is auto-created on first run:
+- Email: `Founder@growpido.com`
+- Password: `Growpido@2026`
 
 ### 2. Frontend
 

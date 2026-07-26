@@ -197,7 +197,7 @@ def delete_lead(
     current_user: User = Depends(get_current_user),
 ):
     from app.models.user import UserRole
-    if current_user.role != UserRole.admin:
+    if current_user.role not in [UserRole.admin, UserRole.super_admin]:
         raise HTTPException(status_code=403, detail="Only admins can delete leads")
     lead = _get_lead_or_404(lead_id, db)
     db.delete(lead)

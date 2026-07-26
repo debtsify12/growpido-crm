@@ -9,7 +9,10 @@ from app.models.lead import Lead, LeadStage
 from app.models.task import Task
 from app.models.user import User, UserRole
 from app.models.work_log import WorkLog
+from app.models.persona import Persona
 from app.core.auth import get_current_user
+from pydantic import BaseModel
+from fastapi import HTTPException
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -72,6 +75,12 @@ def get_overview(
         team_q = team_q.filter(User.tenant_id == current_user.tenant_id)
     team_size = team_q.scalar() or 0
 
+    # Personas count
+    persona_q = db.query(func.count(Persona.id))
+    if current_user.role != UserRole.super_admin:
+        persona_q = persona_q.filter(Persona.tenant_id == current_user.tenant_id)
+    total_personas = persona_q.scalar() or 0
+
     return {
         "total_leads": total_leads,
         "active_leads": active_leads,
@@ -80,6 +89,7 @@ def get_overview(
         "total_pipeline_value": total_pipeline_value or 0,
         "overdue_tasks": overdue_tasks,
         "team_size": team_size,
+        "total_personas": total_personas,
     }
 
 
@@ -235,3 +245,63 @@ def get_team_performance(
         })
 
     return sorted(result, key=lambda x: x["total_leads"], reverse=True)
+
+
+class ClearDataRequest(BaseModel):
+    leads: bool = False
+    personas: bool = False
+    team: bool = False
+
+@router.post("/clear-data")
+def clear_data(
+    payload: ClearDataRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in [UserRole.admin, UserRole.super_admin]:
+        raise HTTPException(status_code=403, detail="Not authorized to clear data")
+
+    try:
+        # Determine the tenant to clear
+        # For super_admin, we could clear across all, but safer to just clear the default or all for now.
+        # Actually, let's just clear for the current user's tenant if they have one.
+        # If super_admin, we clear everything if no tenant_id is enforced, but let's just delete across the board for super_admin if requested.
+        
+        tenant_filter = (Lead.tenant_id == current_user.tenant_id) if current_user.tenant_id else True
+        
+        if payload.leads:
+            from app.models.activity import Activity
+            from app.models.note import Note
+            from app.models.task import Task
+            
+            # Subquery or filter for related entities isn't always easy if they don't have tenant_id
+            # But Activity, Note, Task, Lead have tenant_id (or we can just query by lead_id)
+            if current_user.tenant_id:
+                # Delete related items first to avoid foreign key issues
+                db.query(Activity).filter(Activity.lead_id.in_(db.query(Lead.id).filter(Lead.tenant_id == current_user.tenant_id))).delete(synchronize_session=False)
+                db.query(Note).filter(Note.lead_id.in_(db.query(Lead.id).filter(Lead.tenant_id == current_user.tenant_id))).delete(synchronize_session=False)
+                db.query(Task).filter(Task.lead_id.in_(db.query(Lead.id).filter(Lead.tenant_id == current_user.tenant_id))).delete(synchronize_session=False)
+                db.query(Lead).filter(Lead.tenant_id == current_user.tenant_id).delete(synchronize_session=False)
+            else:
+                db.query(Activity).delete(synchronize_session=False)
+                db.query(Note).delete(synchronize_session=False)
+                db.query(Task).delete(synchronize_session=False)
+                db.query(Lead).delete(synchronize_session=False)
+
+        if payload.personas:
+            if current_user.tenant_id:
+                db.query(Persona).filter(Persona.tenant_id == current_user.tenant_id).delete(synchronize_session=False)
+            else:
+                db.query(Persona).delete(synchronize_session=False)
+
+        if payload.team:
+            if current_user.tenant_id:
+                db.query(User).filter(User.tenant_id == current_user.tenant_id, User.id != current_user.id).delete(synchronize_session=False)
+            else:
+                db.query(User).filter(User.id != current_user.id).delete(synchronize_session=False)
+
+        db.commit()
+        return {"status": "success", "message": "Data cleared successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error clearing data: {str(e)}")

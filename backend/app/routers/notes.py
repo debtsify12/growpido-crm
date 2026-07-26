@@ -90,7 +90,7 @@ def delete_note(
         raise HTTPException(status_code=404, detail="Note not found")
     if note.author_id != current_user.id:
         from app.models.user import UserRole
-        if current_user.role != UserRole.admin:
+        if current_user.role not in [UserRole.admin, UserRole.super_admin]:
             raise HTTPException(status_code=403, detail="Not allowed")
     db.delete(note)
     db.commit()

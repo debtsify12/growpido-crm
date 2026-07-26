@@ -5,6 +5,7 @@ from app.models.task import Task, TaskType
 from app.models.note import Note
 from app.models.activity import Activity, ActivityType
 from app.models.work_log import WorkLog, WorkLogCategory
+from app.models.persona import Persona
 
 __all__ = [
     "Tenant", "TenantPlan",

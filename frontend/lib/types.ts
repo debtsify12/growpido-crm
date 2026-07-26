@@ -227,7 +227,8 @@ export interface DashboardOverview {
   lost_leads: number;
   total_pipeline_value: number;
   overdue_tasks: number;
-  team_size: number;
+  team_size?: number;
+  total_personas?: number;
 }
 
 export interface PipelineStageData {

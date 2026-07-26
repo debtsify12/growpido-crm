@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 
     # Super Admin credentials (set in .env for production)
-    SUPER_ADMIN_EMAIL: str = "superadmin@growpido.com"
-    SUPER_ADMIN_PASSWORD: str = "SuperAdmin@2024"
+    SUPER_ADMIN_EMAIL: str = "Founder@growpido.com"
+    SUPER_ADMIN_PASSWORD: str = "Growpido@2026"
 
     @property
     def allowed_origins_list(self) -> List[str]:

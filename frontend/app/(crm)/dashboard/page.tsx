@@ -104,6 +104,8 @@ export default function DashboardPage() {
   const [stuck, setStuck] = useState<StuckLead[]>([]);
   const [team, setTeam] = useState<TeamPerformance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; type: 'leads' | 'personas' | 'team' | null; processing: boolean }>({ isOpen: false, type: null, processing: false });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; isError: boolean }>({ isOpen: false, message: '', isError: false });
 
   useEffect(() => {
     Promise.all([
@@ -142,6 +144,30 @@ export default function DashboardPage() {
     );
   }
 
+  const handleClearData = (type: 'leads' | 'personas' | 'team') => {
+    setConfirmModal({ isOpen: true, type, processing: false });
+  };
+
+  const executeClearData = async () => {
+    const type = confirmModal.type;
+    if (!type) return;
+    
+    setConfirmModal(prev => ({ ...prev, processing: true }));
+    try {
+      await dashboardApi.clearData({
+        leads: type === 'leads',
+        personas: type === 'personas',
+        team: type === 'team',
+      });
+      setConfirmModal({ isOpen: false, type: null, processing: false });
+      setAlertModal({ isOpen: true, message: `All ${type} cleared successfully.`, isError: false });
+    } catch (error) {
+      console.error('Clear data failed:', error);
+      setConfirmModal({ isOpen: false, type: null, processing: false });
+      setAlertModal({ isOpen: true, message: `Failed to clear ${type}.`, isError: true });
+    }
+  };
+
   return (
     <div className="page-container">
       {/* Header */}
@@ -175,7 +201,10 @@ export default function DashboardPage() {
           color={overview?.overdue_tasks ? 'var(--color-danger)' : 'var(--text-primary)'}
         />
         {(user?.role === 'admin' || user?.role === 'super_admin') && (
-          <StatCard label="Team Members" value={overview?.team_size ?? 0} />
+          <>
+            <StatCard label="Team Members" value={overview?.team_size ?? 0} />
+            <StatCard label="Personas / Skills" value={overview?.total_personas ?? 0} color="var(--color-info)" />
+          </>
         )}
       </div>
 
@@ -461,6 +490,116 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Danger Zone */}
+      {(user?.role === 'admin' || user?.role === 'super_admin') && (
+        <div className="card" style={{ padding: '20px 24px', border: '1px solid var(--color-danger-bg)' }}>
+          <SectionHeader title="Danger Zone (Admin Only)" sub="Permanently delete data from your workspace" />
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => handleClearData('leads')}
+              style={{
+                background: 'var(--color-danger)', color: 'white', border: 'none', borderRadius: '6px',
+                padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+              }}>
+              Delete All Leads
+            </button>
+            <button 
+              onClick={() => handleClearData('personas')}
+              style={{
+                background: 'var(--color-danger)', color: 'white', border: 'none', borderRadius: '6px',
+                padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+              }}>
+              Delete All Personas/Skills
+            </button>
+            <button 
+              onClick={() => handleClearData('team')}
+              style={{
+                background: 'var(--color-danger)', color: 'white', border: 'none', borderRadius: '6px',
+                padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+              }}>
+              Delete All Team Members
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmModal.isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'var(--bg-modal, #fff)',
+            borderRadius: '8px', padding: '24px', maxWidth: '400px', width: '90%',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)' }}>Confirm Deletion</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
+              Are you sure you want to delete all {confirmModal.type}? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button 
+                onClick={() => setConfirmModal({ isOpen: false, type: null, processing: false })}
+                style={{
+                  padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--border)',
+                  background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer'
+                }}
+                disabled={confirmModal.processing}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeClearData}
+                style={{
+                  padding: '8px 16px', borderRadius: '6px', border: 'none',
+                  background: 'var(--color-danger, #ef4444)', color: '#fff', cursor: 'pointer',
+                  opacity: confirmModal.processing ? 0.7 : 1
+                }}
+                disabled={confirmModal.processing}
+              >
+                {confirmModal.processing ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {alertModal.isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'var(--bg-modal, #fff)',
+            borderRadius: '8px', padding: '24px', maxWidth: '400px', width: '90%',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, fontSize: '18px', fontWeight: 600, color: alertModal.isError ? 'var(--color-danger, #ef4444)' : 'var(--brand-primary, #10b981)' }}>
+              {alertModal.isError ? 'Error' : 'Success'}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
+              {alertModal.message}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  setAlertModal({ isOpen: false, message: '', isError: false });
+                  if (!alertModal.isError) window.location.reload();
+                }}
+                style={{
+                  padding: '8px 16px', borderRadius: '6px', border: 'none',
+                  background: 'var(--brand-primary, #10b981)', color: '#fff', cursor: 'pointer'
+                }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

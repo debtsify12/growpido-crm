@@ -19,5 +19,5 @@ async def analyze_content(
             detail="Content cannot be empty."
         )
         
-    result = analyze_linkedin_content(request.content)
+    result = analyze_linkedin_content(request)
     return result

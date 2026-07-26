@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.database import run_migrations
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.routers import auth, leads, tasks, notes, users, dashboard, import_export, content
-from app.routers import tenants, people
+from app.routers import tenants, people, personas
 
 
 @asynccontextmanager
@@ -29,7 +29,6 @@ def _seed_default_tenant_and_super_admin():
     - Creates a 'Growpido' default tenant
     - Migrates existing users to this tenant
     - Creates the super_admin user
-    - Ensures existing admin@growpido.com is tenant admin
     """
     from app.database import SessionLocal
     from app.models.tenant import Tenant
@@ -96,22 +95,6 @@ def _seed_default_tenant_and_super_admin():
                 {"tenant_id": default_tenant.id}, synchronize_session=False
             )
         db.commit()
-        # 5. Create default admin if no tenant admin exists
-        existing_admin = db.query(User).filter(
-            User.tenant_id == default_tenant.id,
-            User.role == UserRole.admin,
-        ).first()
-        if not existing_admin:
-            admin = User(
-                name="Growpido Admin",
-                email="admin@growpido.com",
-                hashed_password=get_password_hash("Growpido@2024"),
-                role=UserRole.admin,
-                tenant_id=default_tenant.id,
-                designation="CRM Administrator",
-                employee_id="EMP-001",
-            )
-            db.add(admin)
 
         db.commit()
         print("Database seeding complete.")
@@ -150,6 +133,7 @@ app.include_router(notes.router)
 app.include_router(dashboard.router)
 app.include_router(import_export.router)
 app.include_router(content.router)
+app.include_router(personas.router)
 
 
 @app.get("/")

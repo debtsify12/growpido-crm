@@ -141,9 +141,10 @@ export const dashboardApi = {
   pipelineByStage: () => api.get<PipelineStageData[]>('/api/dashboard/pipeline-by-stage'),
   sourceBreakdown: () => api.get<SourceData[]>('/api/dashboard/source-breakdown'),
   conversionRates: () => api.get<ConversionData[]>('/api/dashboard/conversion-rates'),
-  stuckLeads: (days?: number) =>
-    api.get<StuckLead[]>('/api/dashboard/stuck-leads', { params: { days } }),
+  stuckLeads: (days: number = 7) => api.get<StuckLead[]>(`/api/dashboard/stuck-leads?days=${days}`),
   teamPerformance: () => api.get<TeamPerformance[]>('/api/dashboard/team-performance'),
+  clearData: (options: { leads: boolean; personas: boolean; team: boolean }) =>
+    api.post<{ status: string; message: string }>('/api/dashboard/clear-data', options),
 };
 
 // ─── Import / Export ──────────────────────────────────────────────────────────
@@ -163,7 +164,13 @@ export const importExportApi = {
 // ─── Content Strategist ───────────────────────────────────────────────────────
 
 export const contentApi = {
-  analyze: (content: string) => api.post<{score: number, verdict: string, suggestions: string[], hooks?: string[]}>('/api/content/analyze', { content }),
+  analyze: (content: string, personaContext?: string) => api.post<{score: number, verdict: string, suggestions: string[], hooks?: string[]}>('/api/content/analyze', { content, persona_context: personaContext }),
+};
+
+export const personaApi = {
+  getPersonas: () => api.get<any[]>('/api/personas'),
+  createPersona: (data: { name: string, description?: string, context: string }) => api.post<any>('/api/personas', data),
+  deletePersona: (id: string) => api.delete(`/api/personas/${id}`),
 };
 
 export default api;

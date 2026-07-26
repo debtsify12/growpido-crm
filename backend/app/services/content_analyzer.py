@@ -27,6 +27,7 @@ TOP_LINKEDIN_POSTS = [
 
 class ContentAnalysisRequest(BaseModel):
     content: str
+    persona_context: str | None = None
 
 class ContentAnalysisResponse(BaseModel):
     score: int
@@ -41,13 +42,14 @@ SYSTEM_PROMPT = (
     "2. A verdict (e.g., 'Excellent', 'Good', 'Needs Work', 'Poor')\n"
     "3. 3-5 specific, actionable suggestions for improvement\n"
     "4. 3 alternative, high-converting opening hook ideas (catchy 1-2 sentence intros) tailored specifically for this draft.\n\n"
+    "{persona_instructions}"
     "Use the following examples of highly successful LinkedIn posts as a baseline for what works "
     "(strong hooks, clear value, storytelling, readability):\n{top_posts}\n\n{format_instructions}"
 )
 
 USER_PROMPT = "Analyze this draft:\n\n{draft_content}"
 
-def analyze_linkedin_content(draft_content: str) -> ContentAnalysisResponse:
+def analyze_linkedin_content(request: ContentAnalysisRequest) -> ContentAnalysisResponse:
     # Check for OpenRouter / OpenAI API key
     api_key = os.environ.get("OPENROUTER_API_KEY") or getattr(settings, "OPENROUTER_API_KEY", "") or os.environ.get("OPENAI_API_KEY")
     base_url = os.environ.get("OPENROUTER_BASE_URL") or getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
@@ -58,11 +60,14 @@ def analyze_linkedin_content(draft_content: str) -> ContentAnalysisResponse:
         score = 50
         suggestions = ["Add an OPENROUTER_API_KEY to your .env to enable real AI scoring via OpenRouter!"]
         
-        words = len(draft_content.split())
+        if request.persona_context:
+            suggestions.append(f"Noted Persona Context: {request.persona_context[:50]}...")
+
+        words = len(request.content.split())
         if words < 10:
             suggestions.append("Your post is very short. Try adding more detail or a story.")
             score = 30
-        elif "\n" not in draft_content:
+        elif "\n" not in request.content:
             suggestions.append("Add line breaks to make your post easier to read.")
             score = 40
         else:
@@ -104,11 +109,20 @@ def analyze_linkedin_content(draft_content: str) -> ContentAnalysisResponse:
     
     chain = prompt | llm | parser
     
+    persona_instructions = ""
+    if request.persona_context and request.persona_context.strip():
+        persona_instructions = (
+            f"IMPORTANT: The user has provided the following specific PERSONA/SKILL context for this post:\n"
+            f"'''\n{request.persona_context}\n'''\n"
+            f"You MUST adopt this persona, mimic their style, and tailor all your suggestions and hooks to match this context.\n\n"
+        )
+
     try:
         response = chain.invoke({
             "top_posts": json.dumps(TOP_LINKEDIN_POSTS, indent=2),
             "format_instructions": parser.get_format_instructions(),
-            "draft_content": draft_content
+            "draft_content": request.content,
+            "persona_instructions": persona_instructions
         })
         return response
     except Exception as e:
