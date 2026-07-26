@@ -348,8 +348,18 @@ export const DEPARTMENTS = [
   'Design',
   'Marketing',
   'Operations',
-  'Finance',
   'HR',
   'Product',
   'Customer Success',
 ];
+
+// ─── Personas ─────────────────────────────────────────────────────────────────
+
+export interface Persona {
+  id: string;
+  name: string;
+  description?: string;
+  context: string;
+  created_at?: string;
+}
+

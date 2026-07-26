@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { contentApi, personaApi } from '@/lib/api';
+import type { Persona } from '@/lib/types';
 
 const SAMPLE_POST = `Mahindra Bank is worth about 3.8 lakh Cr and Axis Bank about 3.9 lakh Cr.
 
@@ -27,7 +28,7 @@ export default function ContentStrategistPage() {
   const [activeTab, setActiveTab] = useState<'analysis' | 'hooks'>('analysis');
   const [personaContext, setPersonaContext] = useState('');
   const [inputTab, setInputTab] = useState<'draft' | 'persona'>('draft');
-  const [personas, setPersonas] = useState<any[]>([]);
+  const [personas, setPersonas] = useState<Persona[]>([]);
   const [personaName, setPersonaName] = useState('');
 
   useEffect(() => {
@@ -46,12 +47,12 @@ export default function ContentStrategistPage() {
       setPersonas([...personas, res.data]);
       showToast('Persona saved successfully!');
       setPersonaName('');
-    } catch (err) {
+    } catch {
       showToast('Failed to save persona.');
     }
   };
 
-  const handleSelectPersona = (p: any) => {
+  const handleSelectPersona = (p: Persona) => {
     setPersonaContext(p.context);
     showToast(`Selected persona: ${p.name}`);
   };

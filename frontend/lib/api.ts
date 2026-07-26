@@ -3,7 +3,7 @@ import type {
   User, Lead, LeadListResponse, Task, Note, Activity,
   TokenResponse, DashboardOverview, PipelineStageData,
   SourceData, ConversionData, StuckLead, TeamPerformance,
-  Tenant, WorkLog, PersonStats,
+  Tenant, WorkLog, PersonStats, Persona,
 } from './types';
 
 // Always use the relative /api path so all requests are proxied through
@@ -168,8 +168,8 @@ export const contentApi = {
 };
 
 export const personaApi = {
-  getPersonas: () => api.get<any[]>('/api/personas'),
-  createPersona: (data: { name: string, description?: string, context: string }) => api.post<any>('/api/personas', data),
+  getPersonas: () => api.get<Persona[]>('/api/personas'),
+  createPersona: (data: { name: string, description?: string, context: string }) => api.post<Persona>('/api/personas', data),
   deletePersona: (id: string) => api.delete(`/api/personas/${id}`),
 };
 
