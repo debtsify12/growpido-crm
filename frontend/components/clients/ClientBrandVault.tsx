@@ -71,7 +71,7 @@ export default function ClientBrandVault({ client, onUpdated }: Props) {
             </h3>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-muted, #64748B)' }}>
-            Central repository for {client.company_name || client.full_name}'s tone of voice, founder positioning, and cloud asset folders.
+            Central repository for {client.company_name || client.full_name}&apos;s tone of voice, founder positioning, and cloud asset folders.
           </p>
         </div>
 

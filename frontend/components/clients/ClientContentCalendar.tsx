@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, DragEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Lead, ContentPost, ContentPillar, ContentStatus } from '@/lib/types';
 import { contentPostsApi, contentApi } from '@/lib/api';
 
@@ -29,7 +29,7 @@ interface Props {
 
 export default function ClientContentCalendar({ client, onPostUpdated }: Props) {
   const [posts, setPosts] = useState<ContentPost[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'kanban' | 'calendar' | 'list'>('kanban');
   const [selectedPillar, setSelectedPillar] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -62,11 +62,7 @@ export default function ClientContentCalendar({ client, onPostUpdated }: Props) 
   // Calendar date navigator
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
 
-  useEffect(() => {
-    loadPosts();
-  }, [client.id]);
-
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     try {
       setLoading(true);
       const res = await contentPostsApi.listByClient(client.id);
@@ -76,7 +72,11 @@ export default function ClientContentCalendar({ client, onPostUpdated }: Props) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [client.id]);
+
+  useEffect(() => {
+    loadPosts();
+  }, [client.id, loadPosts]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -144,20 +144,6 @@ export default function ClientContentCalendar({ client, onPostUpdated }: Props) 
     } catch (err) {
       console.error('Error saving post', err);
       showToast('Failed to save post. Please try again.');
-    }
-  };
-
-  const handleQuickStatusChange = async (postId: string, newStatus: ContentStatus) => {
-    try {
-      await contentPostsApi.update(postId, { status: newStatus });
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, status: newStatus } : p))
-      );
-      showToast(`Moved to ${newStatus}`);
-      if (onPostUpdated) onPostUpdated();
-    } catch (err) {
-      console.error('Error changing status', err);
-      showToast('Failed to update status');
     }
   };
 
@@ -1764,6 +1750,7 @@ export default function ClientContentCalendar({ client, onPostUpdated }: Props) 
                     {/* Media Preview if provided */}
                     {formMediaUrl && (
                       <div style={{ marginTop: '14px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={formMediaUrl}
                           alt="Post Media"

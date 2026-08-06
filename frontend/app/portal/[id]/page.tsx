@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
 import { PublicPortalResponse, ContentPost } from '@/lib/types';
 import { contentPostsApi } from '@/lib/api';
 
@@ -16,11 +16,7 @@ export default function PublicClientPortalPage({ params }: { params: Promise<{ i
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState('');
 
-  useEffect(() => {
-    loadPortal();
-  }, [leadId]);
-
-  const loadPortal = async () => {
+  const loadPortal = useCallback(async () => {
     try {
       setLoading(true);
       const res = await contentPostsApi.getPublicPortal(leadId);
@@ -31,7 +27,11 @@ export default function PublicClientPortalPage({ params }: { params: Promise<{ i
     } finally {
       setLoading(false);
     }
-  };
+  }, [leadId]);
+
+  useEffect(() => {
+    loadPortal();
+  }, [leadId, loadPortal]);
 
   const showToast = (msg: string) => {
     setToast(msg);

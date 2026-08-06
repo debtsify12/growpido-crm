@@ -229,7 +229,15 @@ export const integrationsApi = {
       gid: string;
       spreadsheet_url: string;
       last_synced_at: string | null;
-      last_sync_result: any;
+      last_sync_result: {
+        success?: boolean;
+        total_rows_processed?: number;
+        created_leads?: number;
+        updated_leads?: number;
+        unchanged_leads?: number;
+        errors?: string[];
+        synced_at?: string;
+      } | null;
       auto_sync_enabled: boolean;
       sync_interval_minutes: number;
       webhook_url: string;

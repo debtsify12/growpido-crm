@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Lead, Invoice, InvoiceItem, InvoiceStatus, AgencyDetails, ClientDetails } from '@/lib/types';
 import { invoicesApi, leadsApi } from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
 
 interface ExtendedAgencyDetails extends AgencyDetails {
   account_name?: string;
@@ -58,7 +57,6 @@ export default function InvoiceModal({
   onClose,
   onSaved,
 }: InvoiceModalProps) {
-  const { user } = useAuthStore();
   const [viewMode, setViewMode] = useState<'split' | 'preview' | 'editor'>('split');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -74,9 +72,9 @@ export default function InvoiceModal({
   const [dueDate, setDueDate] = useState('20 August 2026');
   const [paymentTerms, setPaymentTerms] = useState('Due on Receipt');
   const [currency, setCurrency] = useState('USD');
-  const [taxRate, setTaxRate] = useState<number>(0);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
-  const [notes, setNotes] = useState('Thank you for your business!');
+  const [taxRate] = useState<number>(0);
+  const [discountAmount] = useState<number>(0);
+  const [notes] = useState('Thank you for your business!');
   const [signatoryName, setSignatoryName] = useState('Ajit Singh');
 
   const [agency, setAgency] = useState<ExtendedAgencyDetails>(GROWPIDO_DEFAULTS);
@@ -129,13 +127,13 @@ export default function InvoiceModal({
       setDueDate(existingInvoice.due_date ? new Date(existingInvoice.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : defaultDueFormatted);
       setCurrency(existingInvoice.currency || 'USD');
       setAgency({ ...GROWPIDO_DEFAULTS, ...(existingInvoice.agency_details || {}) });
-      setSignatoryName((existingInvoice.agency_details as any)?.signatory_name || 'Ajit Singh');
+      setSignatoryName((existingInvoice.agency_details as ExtendedAgencyDetails | undefined)?.signatory_name || 'Ajit Singh');
       setClientInfo(existingInvoice.client_details || {
         name: existingInvoice.lead?.company_name || existingInvoice.lead?.full_name || 'Test DragDrop Lead',
         company: existingInvoice.lead?.company_name || existingInvoice.lead?.full_name || 'Test DragDrop Lead',
         email: existingInvoice.lead?.email || '',
         phone: existingInvoice.lead?.phone || '',
-        address: (existingInvoice.lead as any)?.company_address || '4TH FLOOR, VENTURE X, LANDMARK CYBERPARK, GURUGRAM, HARYANA, INDIA - 122102',
+        address: (existingInvoice.lead as Lead | undefined)?.company_address || '4TH FLOOR, VENTURE X, LANDMARK CYBERPARK, GURUGRAM, HARYANA, INDIA - 122102',
       });
       setItems(existingInvoice.items && existingInvoice.items.length > 0 ? existingInvoice.items : [
         { description: 'LinkedIn Personal Branding & Executive Content Engine', quantity: 1, unit_price: 1100, amount: 1100 }
@@ -181,7 +179,7 @@ export default function InvoiceModal({
         company: selected.company_name || selected.full_name,
         email: selected.email || '',
         phone: selected.phone || '',
-        address: (selected as any).company_address || '4TH FLOOR, VENTURE X, LANDMARK CYBERPARK, GURUGRAM, HARYANA, INDIA - 122102',
+        address: selected.company_address || '4TH FLOOR, VENTURE X, LANDMARK CYBERPARK, GURUGRAM, HARYANA, INDIA - 122102',
         poc: selected.poc_name || selected.full_name,
       });
       if (selected.budget) {
@@ -200,7 +198,7 @@ export default function InvoiceModal({
     }
   }
 
-  function handleItemChange(index: number, field: keyof InvoiceItem, value: any) {
+  function handleItemChange(index: number, field: keyof InvoiceItem, value: string | number) {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     if (field === 'quantity' || field === 'unit_price') {
@@ -251,9 +249,9 @@ export default function InvoiceModal({
     return found ? found.symbol : '$';
   }, [currency]);
 
-  function formatCurrency(val: number) {
+  const formatCurrency = useCallback((val: number) => {
     return `${currencySymbol}${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
+  }, [currencySymbol]);
 
   // Save to backend
   async function handleSave() {
@@ -297,8 +295,9 @@ export default function InvoiceModal({
       }
       onSaved(savedInvoice);
       onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to save invoice');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setError(error?.response?.data?.detail || 'Failed to save invoice');
     } finally {
       setSaving(false);
     }
@@ -1023,7 +1022,7 @@ export default function InvoiceModal({
   </div>
 </body>
 </html>`;
-  }, [invoiceNumber, issueDate, clientInfo, items, agency, signatoryName, grandTotal, currencySymbol]);
+  }, [invoiceNumber, issueDate, clientInfo, items, agency, signatoryName, grandTotal, formatCurrency]);
 
   // Robust Native Print Function
   function handlePrintPdf() {

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { Lead, LeadStage, Invoice, InvoiceSummary, User } from '@/lib/types';
-import { leadsApi, invoicesApi, usersApi } from '@/lib/api';
+import { Lead, LeadStage, Invoice, InvoiceSummary } from '@/lib/types';
+import { leadsApi, invoicesApi } from '@/lib/api';
 import InvoiceModal from '@/components/invoices/InvoiceModal';
 import ClientInvoicesDrawer from '@/components/invoices/ClientInvoicesDrawer';
 
@@ -17,7 +17,6 @@ const CURRENT_CLIENT_STAGES: LeadStage[] = [
 
 export default function CurrentClientsPage() {
   const [clients, setClients] = useState<Lead[]>([]);
-  const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const [invoiceSummary, setInvoiceSummary] = useState<InvoiceSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,17 +37,12 @@ export default function CurrentClientsPage() {
   const [selectedClientForDrawer, setSelectedClientForDrawer] = useState<Lead | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [leadsRes, summaryRes, teamRes] = await Promise.all([
+      const [leadsRes, summaryRes] = await Promise.all([
         leadsApi.list({ limit: 500 }),
         invoicesApi.summary().catch(() => ({ data: null })),
-        usersApi.list().catch(() => ({ data: [] })),
       ]);
 
       const allLeads = leadsRes.data.items || [];
@@ -58,13 +52,16 @@ export default function CurrentClientsPage() {
 
       setClients(currentClients);
       if (summaryRes?.data) setInvoiceSummary(summaryRes.data);
-      if (teamRes?.data) setTeamMembers(teamRes.data);
     } catch (err) {
       console.error('Error loading current clients data', err);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Filtered and sorted clients
   const filteredClients = useMemo(() => {
@@ -100,7 +97,6 @@ export default function CurrentClientsPage() {
   const totalClientsCount = clients.length;
   const totalMonthlyRetainer = clients.reduce((acc, c) => acc + (c.budget || 0), 0);
   const annualizedRunRate = totalMonthlyRetainer * 12;
-  const arpu = totalClientsCount > 0 ? Math.round(totalMonthlyRetainer / totalClientsCount) : 0;
 
   const stageStats = useMemo(() => {
     const counts: Record<string, { count: number; value: number }> = {};
@@ -532,7 +528,7 @@ export default function CurrentClientsPage() {
 
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as 'value_desc' | 'value_asc' | 'name' | 'recent')}
             style={{
               padding: '8px 12px',
               borderRadius: '8px',
@@ -591,7 +587,7 @@ export default function CurrentClientsPage() {
             <div style={{ fontSize: '36px', marginBottom: '10px' }}>🏢</div>
             <div style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>No clients found</div>
             <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
-              Move won leads to 'Active Client' or 'Won' stage in your pipeline to see them here.
+              Move won leads to &apos;Active Client&apos; or &apos;Won&apos; stage in your pipeline to see them here.
             </p>
           </div>
         ) : viewMode === 'table' ? (

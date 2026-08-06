@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { invoicesApi } from '@/lib/api';
 import { Invoice, InvoiceStatus } from '@/lib/types';
 import InvoiceModal from '@/components/invoices/InvoiceModal';
@@ -14,24 +14,24 @@ export default function InvoicesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
-  // Load Invoices
-  useEffect(() => {
-    loadInvoices();
-  }, []);
-
-  async function loadInvoices() {
+  const loadInvoices = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const res = await invoicesApi.list();
       setInvoices(Array.isArray(res.data) ? res.data : []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load invoices', err);
       setError('Could not fetch invoices from CRM backend.');
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  // Load Invoices
+  useEffect(() => {
+    loadInvoices();
+  }, [loadInvoices]);
 
   // Handle Status Update
   async function handleStatusChange(invoiceId: string, newStatus: InvoiceStatus) {
@@ -166,6 +166,12 @@ export default function InvoicesPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div style={{ padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#991B1B', fontSize: '13px', marginBottom: '16px' }}>
+          ⚠️ {error}
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div

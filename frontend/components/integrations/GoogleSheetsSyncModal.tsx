@@ -3,6 +3,16 @@
 import { useState, useEffect } from 'react';
 import { integrationsApi } from '@/lib/api';
 
+interface GoogleSheetsSyncResult {
+  success?: boolean;
+  total_rows_processed?: number;
+  created_leads?: number;
+  updated_leads?: number;
+  unchanged_leads?: number;
+  errors?: string[];
+  synced_at?: string;
+}
+
 interface GoogleSheetsSyncModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,7 +31,7 @@ export default function GoogleSheetsSyncModal({
     gid: string;
     spreadsheet_url: string;
     last_synced_at: string | null;
-    last_sync_result: any;
+    last_sync_result: GoogleSheetsSyncResult | null;
     webhook_url: string;
   } | null>(null);
 
@@ -42,7 +52,7 @@ export default function GoogleSheetsSyncModal({
       setSyncErrorMsg(null);
       const res = await integrationsApi.getGoogleSheetsConfig();
       setConfig(res.data);
-    } catch (err: any) {
+    } catch {
       setSyncErrorMsg('Unable to connect to Google Sheets. Please check your backend connection.');
     } finally {
       setLoading(false);
@@ -72,8 +82,9 @@ export default function GoogleSheetsSyncModal({
       if (onSyncCompleted) {
         onSyncCompleted();
       }
-    } catch (err: any) {
-      setSyncErrorMsg(err?.response?.data?.detail || 'Sync failed. Please try again.');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setSyncErrorMsg(error?.response?.data?.detail || 'Sync failed. Please try again.');
     } finally {
       setSyncing(false);
     }

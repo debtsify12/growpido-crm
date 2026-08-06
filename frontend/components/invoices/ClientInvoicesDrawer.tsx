@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Lead, Invoice, InvoiceStatus } from '@/lib/types';
 import { invoicesApi } from '@/lib/api';
 
@@ -19,12 +19,7 @@ export default function ClientInvoicesDrawer({
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!client) return;
-    loadInvoices();
-  }, [client]);
-
-  async function loadInvoices() {
+  const loadInvoices = useCallback(async () => {
     if (!client) return;
     try {
       setLoading(true);
@@ -35,7 +30,12 @@ export default function ClientInvoicesDrawer({
     } finally {
       setLoading(false);
     }
-  }
+  }, [client]);
+
+  useEffect(() => {
+    if (!client) return;
+    loadInvoices();
+  }, [client, loadInvoices]);
 
   async function handleStatusChange(invoiceId: string, newStatus: InvoiceStatus) {
     try {
