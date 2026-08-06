@@ -15,7 +15,14 @@ interface LeadCardProps {
 
 export default function LeadCard({ lead, color, onClick, isDragging }: LeadCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging: isSortableDragging } =
-    useSortable({ id: lead.id });
+    useSortable({
+      id: lead.id,
+      data: {
+        type: 'Lead',
+        lead,
+        stage: lead.stage,
+      },
+    });
 
   const style = {
     transform: CSS.Transform.toString(transform),

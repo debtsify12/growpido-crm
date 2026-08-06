@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { leadsApi, tasksApi, usersApi } from '@/lib/api';
-import { Lead, Activity, Note, Task, User, PIPELINE_STAGES, STAGE_COLORS, LEAD_SOURCES } from '@/lib/types';
+import { leadsApi, tasksApi, usersApi, invoicesApi } from '@/lib/api';
+import { Lead, Activity, Note, Task, User, Invoice, PIPELINE_STAGES, STAGE_COLORS, LEAD_SOURCES } from '@/lib/types';
 import { formatDistanceToNow, format } from 'date-fns';
+import InvoiceModal from '@/components/invoices/InvoiceModal';
+import ClientContentCalendar from '@/components/clients/ClientContentCalendar';
+import ClientRetainerTracker from '@/components/clients/ClientRetainerTracker';
+import ClientBrandVault from '@/components/clients/ClientBrandVault';
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   stage_change: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-1.35"/></svg>,
@@ -25,6 +29,7 @@ export default function LeadProfilePage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [noteText, setNoteText] = useState('');
@@ -34,13 +39,22 @@ export default function LeadProfilePage() {
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Invoice modal state
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
+  // Client delivery operations tab
+  const isClientStage = lead ? ['Won', 'Onboarding', 'Active Client', 'Upsell', 'Referral'].includes(lead.stage) : false;
+  const [activeTab, setActiveTab] = useState<'delivery' | 'crm'>('delivery');
+
   const load = useCallback(async () => {
     try {
-      const [leadRes, activitiesRes, notesRes, tasksRes, usersRes] = await Promise.all([
+      const [leadRes, activitiesRes, notesRes, tasksRes, invoicesRes, usersRes] = await Promise.all([
         leadsApi.get(id),
         leadsApi.activities(id),
         leadsApi.notes(id),
         tasksApi.list({ lead_id: id }),
+        invoicesApi.byClient(id).catch(() => ({ data: [] })),
         usersApi.list(),
       ]);
       setLead(leadRes.data);
@@ -48,6 +62,7 @@ export default function LeadProfilePage() {
       setActivities(activitiesRes.data);
       setNotes(notesRes.data);
       setTasks(tasksRes.data);
+      setInvoices(invoicesRes.data || []);
       setUsers(usersRes.data);
     } finally {
       setLoading(false);
@@ -115,13 +130,63 @@ export default function LeadProfilePage() {
 
   return (
     <div className="page-container">
-      {/* Back + Header */}
-      <div style={{ marginBottom: '20px' }}>
+      {/* Back + Header + Tab Switcher */}
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <button className="btn btn-ghost btn-sm" onClick={() => router.back()}>← Back</button>
+
+        {isClientStage && (
+          <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-elevated, #F1F5F9)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('delivery')}
+              style={{
+                background: activeTab === 'delivery' ? 'var(--brand-primary, #0E56C4)' : 'transparent',
+                color: activeTab === 'delivery' ? '#FFFFFF' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '7px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              📅 Content Calendar & Delivery Suite
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('crm')}
+              style={{
+                background: activeTab === 'crm' ? 'var(--brand-primary, #0E56C4)' : 'transparent',
+                color: activeTab === 'crm' ? '#FFFFFF' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '7px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              👤 CRM Profile & Invoices
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* CLIENT OPERATIONS & CONTENT DELIVERY VIEW */}
+      {isClientStage && activeTab === 'delivery' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <ClientRetainerTracker client={lead} deliveredPostsCount={0} onUpdated={load} />
+          <ClientContentCalendar client={lead} onPostUpdated={load} />
+          <ClientBrandVault client={lead} onUpdated={load} />
+        </div>
+      )}
+
+      {/* CRM PROFILE & PIPELINE VIEW */}
+      {(!isClientStage || activeTab === 'crm') && (
       <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '24px', alignItems: 'start' }}>
-        {/* LEFT: Lead Profile Panel */}
+        {/* LEFT: Lead Profile Panel & Invoices */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Identity Card */}
           <div className="card">
@@ -248,30 +313,107 @@ export default function LeadProfilePage() {
                   )}
                   {lead.source && (
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Source:</span>
+                      <span className="badge badge-secondary">{lead.source}</span>
+                    </div>
+                  )}
+                  {lead.created_at && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '13px', paddingTop: '4px', borderTop: '1px dashed var(--border)' }}>
                       <span style={{ color: 'var(--text-muted)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
                       </span>
-                      <span style={{ color: 'var(--text-secondary)' }}>{lead.source}</span>
-                    </div>
-                  )}
-                  {lead.assigned_user && (
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <div className="avatar avatar-sm">{lead.assigned_user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}</div>
-                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{lead.assigned_user.name}</span>
-                    </div>
-                  )}
-                  {/* Services */}
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                    {lead.reputation_building && <span className="badge badge-info">LinkedIn Reputation</span>}
-                    {lead.custom_ai_agent && <span className="badge badge-muted">Custom AI Agent</span>}
-                  </div>
-                  {/* Tags */}
-                  {lead.tags && lead.tags.length > 0 && (
-                    <div className="tags-list">
-                      {lead.tags.map((t) => <span key={t} className="tag">{t}</span>)}
+                      <span style={{ color: 'var(--text-muted)' }}>Added on:</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        {format(new Date(lead.created_at), 'dd MMM yyyy, hh:mm a')}
+                      </span>
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Invoices & Billing Card */}
+          <div className="card">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                <h3 className="card-title" style={{ margin: 0 }}>Invoices ({invoices.length})</h3>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary btn-xs"
+                style={{ fontSize: '11px', padding: '3px 8px' }}
+                onClick={() => {
+                  setSelectedInvoice(null);
+                  setIsInvoiceModalOpen(true);
+                }}
+              >
+                + Generate
+              </button>
+            </div>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {invoices.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '12px' }}>
+                  No invoices generated for this client yet.
+                </div>
+              ) : (
+                invoices.map((inv) => (
+                  <div
+                    key={inv.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onClick={() => {
+                      setSelectedInvoice(inv);
+                      setIsInvoiceModalOpen(true);
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
+                        {inv.invoice_number}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Draft'}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, fontSize: '13px', color: '#0E56C4' }}>
+                        {inv.currency || '$'}{Number(inv.total_amount || 0).toLocaleString()}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: inv.status === 'Paid' ? '#ecfdf5' : inv.status === 'Sent' ? '#eff6ff' : '#f8fafc',
+                          color: inv.status === 'Paid' ? '#059669' : inv.status === 'Sent' ? '#2563eb' : '#64748b',
+                        }}
+                      >
+                        {inv.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -394,6 +536,24 @@ export default function LeadProfilePage() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Invoice Generator Modal */}
+      {isInvoiceModalOpen && lead && (
+        <InvoiceModal
+          client={lead}
+          existingInvoice={selectedInvoice}
+          onClose={() => {
+            setIsInvoiceModalOpen(false);
+            setSelectedInvoice(null);
+          }}
+          onSaved={() => {
+            setIsInvoiceModalOpen(false);
+            setSelectedInvoice(null);
+            load();
+          }}
+        />
+      )}
 
       {/* Custom Delete Confirmation Modal */}
       {showDeleteModal && (

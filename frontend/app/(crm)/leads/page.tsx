@@ -6,6 +6,7 @@ import { leadsApi, importExportApi, peopleApi } from '@/lib/api';
 import { Lead, User, PIPELINE_STAGES, LEAD_SOURCES, STAGE_COLORS } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import LeadFormModal from '@/components/leads/LeadFormModal';
+import GoogleSheetsSyncModal from '@/components/integrations/GoogleSheetsSyncModal';
 
 export default function LeadsPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function LeadsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSheetsSync, setShowSheetsSync] = useState(false);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
@@ -66,6 +68,10 @@ export default function LeadsPage() {
     e.target.value = ''; // Reset input
   }
 
+  const isClientStage = (stage: string) => {
+    return ['Won', 'Onboarding', 'Active Client', 'Upsell', 'Referral'].includes(stage);
+  };
+
   const stageBadge = (stage: string) => {
     const color = STAGE_COLORS[stage as keyof typeof STAGE_COLORS] || '#6B7280';
     return (
@@ -84,6 +90,22 @@ export default function LeadsPage() {
           <p className="page-subtitle">{total} leads · Single source of truth</p>
         </div>
         <div className="topbar-actions">
+          <button 
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowSheetsSync(true)}
+            style={{ 
+              background: 'rgba(16, 185, 129, 0.1)', 
+              color: '#10b981', 
+              borderColor: 'rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 600
+            }}
+          >
+            <span>📊</span>
+            <span>Sync Google Sheet</span>
+          </button>
           <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -182,6 +204,7 @@ export default function LeadsPage() {
             <thead>
               <tr>
                 <th style={{ minWidth: '220px' }}>Name & Company</th>
+                <th style={{ minWidth: '130px' }}>Date Added</th>
                 <th style={{ minWidth: '150px' }}>Profile (Added By)</th>
                 <th style={{ minWidth: '140px' }}>Stage</th>
                 <th style={{ minWidth: '100px' }}>Priority</th>
@@ -211,6 +234,16 @@ export default function LeadsPage() {
                     {lead.company_name && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.company_name}</div>}
                   </td>
                   <td>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                      {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                    </div>
+                    {lead.created_at && (
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {new Date(lead.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                  </td>
+                  <td>
                     {lead.added_by_user ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div className="avatar avatar-sm">{lead.added_by_user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}</div>
@@ -220,9 +253,31 @@ export default function LeadsPage() {
                   </td>
                   <td>{stageBadge(lead.stage)}</td>
                   <td>
-                    <span className={`badge badge-priority-${(lead.priority || 'warm').toLowerCase()}`}>
-                      {lead.priority || 'Warm'}
-                    </span>
+                    {isClientStage(lead.stage) ? (
+                      <span
+                        className="badge"
+                        style={{
+                          background: '#ecfdf5',
+                          color: '#059669',
+                          border: '1px solid #a7f3d0',
+                          fontWeight: 700,
+                          fontSize: '11px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <span style={{ fontSize: '9px' }}>●</span> Client
+                      </span>
+                    ) : lead.is_lost ? (
+                      <span className="badge badge-muted" style={{ opacity: 0.6, fontSize: '11px' }}>
+                        Lost
+                      </span>
+                    ) : (
+                      <span className={`badge badge-priority-${(lead.priority || 'warm').toLowerCase()}`}>
+                        {lead.priority || 'Warm'}
+                      </span>
+                    )}
                   </td>
                   <td>{lead.poc_name || <span style={{ opacity: 0.4 }}>—</span>}</td>
                   <td>
@@ -298,6 +353,12 @@ export default function LeadsPage() {
           onSaved={() => { setShowCreateModal(false); loadLeads(); }}
         />
       )}
+
+      <GoogleSheetsSyncModal
+        isOpen={showSheetsSync}
+        onClose={() => setShowSheetsSync(false)}
+        onSyncCompleted={loadLeads}
+      />
     </div>
   );
 }

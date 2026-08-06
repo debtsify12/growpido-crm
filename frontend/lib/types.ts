@@ -99,6 +99,12 @@ export interface Lead {
     name: string;
     email: string;
   };
+  // Client Delivery & Retainer
+  monthly_post_quota?: number;
+  monthly_calls_quota?: number;
+  health_score?: number;
+  brand_vault?: BrandVault;
+
   created_at: string;
   updated_at?: string;
   last_activity_at?: string;
@@ -362,4 +368,152 @@ export interface Persona {
   context: string;
   created_at?: string;
 }
+
+// ─── Invoices ─────────────────────────────────────────────────────────────────
+
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Cancelled';
+
+export interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+}
+
+export interface AgencyDetails {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  gst?: string;
+  pan?: string;
+  bank_name?: string;
+  account_name?: string;
+  account_number?: string;
+  ifsc?: string;
+  swift_code?: string;
+  upi_id?: string;
+  signatory_name?: string;
+}
+
+export interface ClientDetails {
+  name: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  gst?: string;
+  poc?: string;
+}
+
+export interface Invoice {
+  id: string;
+  tenant_id?: string;
+  lead_id: string;
+  invoice_number: string;
+  status: InvoiceStatus;
+  issue_date: string;
+  due_date?: string;
+  paid_at?: string;
+  currency: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  discount: number;
+  total_amount: number;
+  notes?: string;
+  terms?: string;
+  agency_details?: AgencyDetails;
+  client_details?: ClientDetails;
+  created_by_id?: string;
+  created_at: string;
+  updated_at: string;
+  lead?: {
+    id: string;
+    full_name: string;
+    company_name?: string;
+    email?: string;
+    phone?: string;
+    budget?: number;
+    stage: LeadStage;
+  };
+}
+
+export interface InvoiceSummary {
+  total_invoiced: number;
+  total_paid: number;
+  total_outstanding: number;
+  total_count: number;
+  paid_count: number;
+  pending_count: number;
+}
+
+// ─── Client Delivery & Content Types ──────────────────────────────────────────
+
+export type ContentPillar =
+  | 'Thought Leadership'
+  | 'AI Automation'
+  | 'Personal Story'
+  | 'Case Study'
+  | 'Contrarian Take'
+  | 'Actionable Framework';
+
+export type ContentStatus =
+  | 'Idea'
+  | 'Drafting'
+  | 'Review'
+  | 'Approved'
+  | 'Scheduled'
+  | 'Published';
+
+export interface BrandVault {
+  tone_of_voice?: string;
+  target_audience?: string;
+  executive_bio?: string;
+  topics_focus?: string[];
+  drive_folder_url?: string;
+  notion_workspace_url?: string;
+  loom_video_url?: string;
+  preferred_days?: string[];
+}
+
+export interface ContentPost {
+  id: string;
+  lead_id: string;
+  tenant_id?: string;
+  title: string;
+  content?: string;
+  hook?: string;
+  pillar: ContentPillar;
+  status: ContentStatus;
+  scheduled_date?: string;
+  published_date?: string;
+  viral_score: number;
+  client_feedback?: string;
+  media_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentPostsResponse {
+  items: ContentPost[];
+  total: number;
+  quota: number;
+  delivered: number;
+  progress_percent: number;
+  health_score: number;
+  brand_vault: BrandVault;
+}
+
+export interface PublicPortalResponse {
+  client_name: string;
+  poc_name: string;
+  email?: string;
+  quota: number;
+  brand_vault: BrandVault;
+  posts: ContentPost[];
+}
+
+
 

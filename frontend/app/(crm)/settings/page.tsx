@@ -28,7 +28,9 @@ const EMPTY_FORM = {
   department: '', designation: '', phone: '', employee_id: '', bio: '', join_date: '',
 };
 
-type Tab = 'profile' | 'team';
+import GoogleSheetsSyncModal from '@/components/integrations/GoogleSheetsSyncModal';
+
+type Tab = 'profile' | 'team' | 'integrations';
 
 function SettingsContent() {
   const { user: currentUser, setAuth } = useAuthStore();
@@ -178,9 +180,12 @@ function SettingsContent() {
     }
   }
 
+  const [showSyncModal, setShowSyncModal] = useState(false);
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'profile', label: 'My Profile' },
     ...(canManageTeam ? [{ key: 'team' as Tab, label: 'Team Members' }] : []),
+    { key: 'integrations', label: '📊 Google Sheets Live Sync' },
   ];
 
   return (
@@ -400,7 +405,93 @@ function SettingsContent() {
         </div>
       )}
 
-      {/* Add/Edit User Modal */}
+      {/* Integrations Tab */}
+      {activeTab === 'integrations' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div className="card" style={{ padding: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: '56px', height: '56px', borderRadius: '16px',
+                  background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '28px',
+                }}>
+                  📊
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Google Sheets 2-Way Real-Time Sync
+                    </h2>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                      background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)'
+                    }}>
+                      ● Active (Auto 15m + Webhooks)
+                    </span>
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: 'var(--text-secondary)' }}>
+                    Continuous live synchronization with client Google Spreadsheet. Lead additions, stage changes, notes & tasks sync seamlessly.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowSyncModal(true)}
+                className="btn btn-primary"
+                style={{ padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span>⚡ Open Live Sync Hub</span>
+              </button>
+            </div>
+
+            {/* Quick Summary Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Spreadsheet Source</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>Growpido — LinkedIn Lead CRM</div>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1y6gq6KYHB0dBLsSHcbH-nO5zQ-9iOn9Kk-vQiAvGdOo/edit?gid=791427930"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '12px', color: 'var(--brand-primary)', marginTop: '4px', display: 'inline-block' }}
+                >
+                  Open Sheet ↗
+                </a>
+              </div>
+
+              <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Auto-Sync Schedule</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>Every 15 Minutes</div>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Background APScheduler</span>
+              </div>
+
+              <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Real-time Webhook</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981', marginTop: '4px' }}>Google Apps Script</div>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>OnEdit Keystroke Sync</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <button
+                onClick={() => setShowSyncModal(true)}
+                className="btn"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              >
+                ⚙️ Manage Settings & Google Apps Script Setup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Sheets Sync Modal */}
+      <GoogleSheetsSyncModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+      />
       {showAddModal && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}

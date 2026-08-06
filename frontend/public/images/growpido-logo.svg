@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 460" width="100%" height="100%">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0E56C4" />
+      <stop offset="100%" stop-color="#0944A0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Shield Outline -->
+  <path d="M200 24
+           C280 24, 355 46, 355 46
+           C355 46, 355 190, 355 240
+           C355 330, 200 436, 200 436
+           C200 436, 45 330, 45 240
+           C45 190, 45 46, 45 46
+           C45 46, 120 24, 200 24 Z"
+        fill="none"
+        stroke="url(#shieldGrad)"
+        stroke-width="26"
+        stroke-linecap="round"
+        stroke-linejoin="round" />
+
+  <!-- Main Growth Arrow inside Shield -->
+  <path d="M112 322
+           L222 178
+           L168 186
+           L248 94
+           L288 238
+           L246 198
+           L138 340 Z"
+        fill="url(#shieldGrad)"
+        stroke="url(#shieldGrad)"
+        stroke-width="4"
+        stroke-linejoin="round"
+        stroke-linecap="round" />
+
+  <!-- Lower Left Diagonal Bar 1 -->
+  <path d="M125 364
+           L212 254
+           L212 292
+           L146 380 Z"
+        fill="url(#shieldGrad)"
+        stroke-linejoin="round" />
+
+  <!-- Lower Left Diagonal Bar 2 -->
+  <path d="M165 396
+           L212 334
+           L212 368
+           L186 404 Z"
+        fill="url(#shieldGrad)"
+        stroke-linejoin="round" />
+</svg>

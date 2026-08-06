@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { leadsApi } from '@/lib/api';
 import {
   PIPELINE_STAGES, LEAD_SOURCES,
@@ -35,6 +35,15 @@ export default function LeadFormModal({ onClose, onSaved, initialStage }: Props)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Lock body scroll while modal is open to prevent page jumps
+  useEffect(() => {
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
+
   function set(field: string, value: unknown) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -63,11 +72,19 @@ export default function LeadFormModal({ onClose, onSaved, initialStage }: Props)
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => {
+        // Only close if clicking directly on the backdrop, not during drag/scroll
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">Add New Lead</h2>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
         </div>
 
         <form onSubmit={handleSubmit}>

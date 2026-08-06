@@ -4,6 +4,8 @@ import type {
   TokenResponse, DashboardOverview, PipelineStageData,
   SourceData, ConversionData, StuckLead, TeamPerformance,
   Tenant, WorkLog, PersonStats, Persona,
+  Invoice, InvoiceSummary, InvoiceStatus,
+  ContentPost, ContentPostsResponse, BrandVault, PublicPortalResponse,
 } from './types';
 
 // Always use the relative /api path so all requests are proxied through
@@ -173,4 +175,82 @@ export const personaApi = {
   deletePersona: (id: string) => api.delete(`/api/personas/${id}`),
 };
 
+// ─── Invoices ─────────────────────────────────────────────────────────────────
+
+export const invoicesApi = {
+  list: (params?: { lead_id?: string; status?: InvoiceStatus }) =>
+    api.get<Invoice[]>('/api/invoices', { params }),
+  summary: () => api.get<InvoiceSummary>('/api/invoices/summary'),
+  get: (id: string) => api.get<Invoice>(`/api/invoices/${id}`),
+  byClient: (leadId: string) => api.get<Invoice[]>(`/api/invoices/client/${leadId}`),
+  create: (data: Partial<Invoice>) => api.post<Invoice>('/api/invoices', data),
+  update: (id: string, data: Partial<Invoice>) => api.put<Invoice>(`/api/invoices/${id}`, data),
+  delete: (id: string) => api.delete(`/api/invoices/${id}`),
+};
+
+// ─── Client Delivery & Content Calendar ───────────────────────────────────────
+
+export const contentPostsApi = {
+  listByClient: (leadId: string) =>
+    api.get<ContentPostsResponse>(`/api/leads/${leadId}/content-posts`),
+  createForClient: (leadId: string, data: Partial<ContentPost>) =>
+    api.post<ContentPost>(`/api/leads/${leadId}/content-posts`, data),
+  updateDeliverySettings: (
+    leadId: string,
+    data: {
+      monthly_post_quota?: number;
+      monthly_calls_quota?: number;
+      health_score?: number;
+      brand_vault?: BrandVault;
+    }
+  ) => api.patch<{ message: string }>(`/api/leads/${leadId}/delivery-settings`, data),
+  get: (postId: string) => api.get<ContentPost>(`/api/content-posts/${postId}`),
+  update: (postId: string, data: Partial<ContentPost>) =>
+    api.patch<ContentPost>(`/api/content-posts/${postId}`, data),
+  delete: (postId: string) => api.delete(`/api/content-posts/${postId}`),
+  getPublicPortal: (leadId: string) =>
+    api.get<PublicPortalResponse>(`/api/public/portal/${leadId}`),
+  submitPortalReview: (
+    leadId: string,
+    postId: string,
+    action: 'approve' | 'comment',
+    feedback?: string
+  ) =>
+    api.post<{ message: string; post: ContentPost }>(
+      `/api/public/portal/${leadId}/posts/${postId}/review`,
+      { action, feedback }
+    ),
+};
+
+export const integrationsApi = {
+  getGoogleSheetsConfig: () =>
+    api.get<{
+      spreadsheet_id: string;
+      gid: string;
+      spreadsheet_url: string;
+      last_synced_at: string | null;
+      last_sync_result: any;
+      auto_sync_enabled: boolean;
+      sync_interval_minutes: number;
+      webhook_url: string;
+      script_code: string;
+    }>('/api/integrations/google-sheets/config'),
+  syncGoogleSheets: (spreadsheet_id?: string, gid?: string) =>
+    api.post<{
+      success: boolean;
+      total_rows_processed: number;
+      created_leads: number;
+      updated_leads: number;
+      unchanged_leads: number;
+      errors: string[];
+      synced_at: string;
+    }>('/api/integrations/google-sheets/sync', { spreadsheet_id, gid }),
+  getAppsScript: () =>
+    api.get<{
+      webhook_url: string;
+      script: string;
+    }>('/api/integrations/google-sheets/script'),
+};
+
 export default api;
+

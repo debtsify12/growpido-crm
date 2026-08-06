@@ -14,7 +14,13 @@ interface StageColumnProps {
 }
 
 export default function StageColumn({ stage, leads, color, summary, onLeadClick }: StageColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const { setNodeRef, isOver } = useDroppable({
+    id: stage,
+    data: {
+      type: 'Column',
+      stage,
+    },
+  });
 
   const totalValue = summary?.total_value || 0;
   const formattedValue = totalValue > 0

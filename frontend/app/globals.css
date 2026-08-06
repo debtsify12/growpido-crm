@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────────── */
 :root {
@@ -591,14 +591,16 @@ select.form-control {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
   animation: fadeIn 150ms ease;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -610,8 +612,11 @@ select.form-control {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-lg);
   animation: slideUp 200ms ease;
+  position: relative;
 }
 
 @keyframes slideUp {
@@ -630,11 +635,18 @@ select.form-control {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--bg-modal);
+  z-index: 2;
 }
 
 .modal-title { font-size: 16px; font-weight: 700; }
 
-.modal-body { padding: var(--space-6); }
+.modal-body {
+  padding: var(--space-6);
+  overscroll-behavior: contain;
+}
 
 .modal-footer {
   padding: var(--space-4) var(--space-6);
@@ -642,6 +654,10 @@ select.form-control {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-modal);
+  z-index: 2;
 }
 
 /* ─── Kanban ─────────────────────────────────────────────────────────────────── */
@@ -700,14 +716,16 @@ select.form-control {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-height: 200px;
+  min-height: calc(100vh - var(--topbar-height) - 180px);
   padding: var(--space-1);
   border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
+  transition: all var(--transition-fast);
+  border: 1px dashed transparent;
 }
 
 .kanban-cards.drag-over {
-  background: rgba(74, 144, 217, 0.05);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--brand-primary, #6366f1);
 }
 
 .kanban-card {
@@ -1238,3 +1256,34 @@ select.form-control {
   text-align: center;
   box-shadow: 0 4px 12px rgba(225, 29, 72, 0.15);
 }
+
+/* ─── Print Styles for Invoices ────────────────────────────────────────────── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-invoice, #printable-invoice * {
+    visibility: visible;
+  }
+  #printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .modal-overlay, .modal-content, .modal-header, .modal-footer {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+}
+

@@ -61,7 +61,13 @@ export default function TaskFormModal({ onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.4)', transition: 'all 0.3s ease' }}>
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.4)', transition: 'all 0.3s ease' }}
+    >
       <div 
         className="modal" 
         style={{ 

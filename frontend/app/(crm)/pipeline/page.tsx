@@ -1,13 +1,26 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  pointerWithin,
+  rectIntersection,
+  closestCorners,
+  CollisionDetection,
+} from '@dnd-kit/core';
 import { useRouter } from 'next/navigation';
 import { leadsApi } from '@/lib/api';
 import { Lead, PIPELINE_STAGES, STAGE_COLORS, LeadStage } from '@/lib/types';
 import LeadCard from '@/components/pipeline/LeadCard';
 import StageColumn from '@/components/pipeline/StageColumn';
 import LeadFormModal from '@/components/leads/LeadFormModal';
+import GoogleSheetsSyncModal from '@/components/integrations/GoogleSheetsSyncModal';
 
 export default function PipelinePage() {
   const router = useRouter();
@@ -15,6 +28,7 @@ export default function PipelinePage() {
   const [loading, setLoading] = useState(true);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSheetsSync, setShowSheetsSync] = useState(false);
   const [stageSummary, setStageSummary] = useState<Record<string, { count: number; total_value: number }>>({});
 
   const loadLeads = useCallback(async () => {
@@ -47,8 +61,23 @@ export default function PipelinePage() {
   }, [loadLeads, loadSummary]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
+
+  const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
+    // 1. Pointer inside container or card (most accurate)
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+    // 2. Rectangular intersection
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) {
+      return rectCollisions;
+    }
+    // 3. Closest corners fallback
+    return closestCorners(args);
+  }, []);
 
   function handleDragStart(event: DragStartEvent) {
     const lead = leads.find((l) => l.id === event.active.id);
@@ -56,30 +85,70 @@ export default function PipelinePage() {
   }
 
   async function handleDragEnd(event: DragEndEvent) {
-    setActiveLead(null);
     const { active, over } = event;
+    setActiveLead(null);
     if (!over) return;
 
     const leadId = active.id as string;
-    const newStage = over.id as LeadStage;
     const lead = leads.find((l) => l.id === leadId);
+    if (!lead) return;
 
-    if (!lead || lead.stage === newStage) return;
+    let targetStage: LeadStage | null = null;
 
-    // Optimistic update
+    const overData = over.data?.current;
+    if (overData?.type === 'Column' && overData.stage) {
+      targetStage = overData.stage as LeadStage;
+    } else if (overData?.type === 'Lead') {
+      targetStage = (overData.stage || overData.lead?.stage) as LeadStage;
+    } else if (PIPELINE_STAGES.includes(over.id as LeadStage)) {
+      targetStage = over.id as LeadStage;
+    } else {
+      const overLead = leads.find((l) => l.id === over.id);
+      if (overLead) {
+        targetStage = overLead.stage;
+      }
+    }
+
+    if (!targetStage || lead.stage === targetStage) return;
+
+    const oldStage = lead.stage;
+
+    // Optimistic lead list update
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l))
+      prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage! } : l))
     );
 
+    // Optimistic summary update
+    setStageSummary((prev) => {
+      const next = { ...prev };
+      const val = lead.budget || 0;
+      if (next[oldStage]) {
+        next[oldStage] = {
+          count: Math.max(0, (next[oldStage].count || 1) - 1),
+          total_value: Math.max(0, (next[oldStage].total_value || val) - val),
+        };
+      }
+      if (next[targetStage!]) {
+        next[targetStage!] = {
+          count: (next[targetStage!].count || 0) + 1,
+          total_value: (next[targetStage!].total_value || 0) + val,
+        };
+      } else {
+        next[targetStage!] = { count: 1, total_value: val };
+      }
+      return next;
+    });
+
     try {
-      await leadsApi.changeStage(leadId, newStage);
+      await leadsApi.changeStage(leadId, targetStage);
       await loadSummary();
     } catch (err) {
       console.error('Stage change failed', err);
-      // Revert
+      // Revert optimistic update
       setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, stage: lead.stage } : l))
+        prev.map((l) => (l.id === leadId ? { ...l, stage: oldStage } : l))
       );
+      await loadSummary();
     }
   }
 
@@ -110,6 +179,22 @@ export default function PipelinePage() {
           </p>
         </div>
         <div className="topbar-actions">
+          <button 
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowSheetsSync(true)}
+            style={{ 
+              background: 'rgba(16, 185, 129, 0.1)', 
+              color: '#10b981', 
+              borderColor: 'rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 600
+            }}
+          >
+            <span>📊</span>
+            <span>Sync Google Sheet</span>
+          </button>
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => router.push('/leads')}
@@ -132,7 +217,7 @@ export default function PipelinePage() {
       {/* Kanban Board */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={collisionDetectionStrategy}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -151,7 +236,7 @@ export default function PipelinePage() {
 
         <DragOverlay>
           {activeLead ? (
-            <div style={{ transform: 'rotate(3deg)', opacity: 0.9 }}>
+            <div style={{ transform: 'rotate(2deg)', opacity: 0.95, pointerEvents: 'none' }}>
               <LeadCard
                 lead={activeLead}
                 color={STAGE_COLORS[activeLead.stage]}
@@ -174,6 +259,16 @@ export default function PipelinePage() {
           }}
         />
       )}
+
+      {/* Google Sheets Sync Modal */}
+      <GoogleSheetsSyncModal
+        isOpen={showSheetsSync}
+        onClose={() => setShowSheetsSync(false)}
+        onSyncCompleted={() => {
+          loadLeads();
+          loadSummary();
+        }}
+      />
     </div>
   );
 }
