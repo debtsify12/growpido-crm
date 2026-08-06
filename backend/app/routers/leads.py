@@ -35,7 +35,8 @@ def _get_lead_or_404(lead_id: str, db: Session) -> Lead:
 @router.get("", response_model=LeadListResponse)
 def list_leads(
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=200),
+    page_size: int = Query(50, ge=1, le=1000),
+    limit: Optional[int] = Query(None, ge=1, le=1000),
     stage: Optional[str] = None,
     priority: Optional[str] = None,
     source: Optional[str] = None,
@@ -79,10 +80,11 @@ def list_leads(
         )
 
     total = query.count()
+    effective_limit = limit if limit is not None else page_size
     leads = (
         query.order_by(Lead.last_activity_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .offset((page - 1) * effective_limit)
+        .limit(effective_limit)
         .all()
     )
     return LeadListResponse(total=total, items=leads)
@@ -170,8 +172,10 @@ def change_stage(
 ):
     lead = _get_lead_or_404(lead_id, db)
     old_stage = lead.stage
+    old_stage_val = old_stage.value if hasattr(old_stage, "value") else str(old_stage)
+    new_stage_val = payload.stage.value if hasattr(payload.stage, "value") else str(payload.stage)
 
-    if old_stage == payload.stage:
+    if old_stage_val == new_stage_val:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Lead is already in this stage",
@@ -240,6 +244,11 @@ def get_pipeline_summary(
         .all()
     )
     return [
-        {"stage": r.stage.value if r.stage else r.stage, "count": r.count, "total_value": r.total_value}
+        {
+            "stage": r.stage.value if hasattr(r.stage, "value") else str(r.stage),
+            "count": r.count,
+            "total_value": r.total_value,
+        }
         for r in results
+        if r.stage is not None
     ]

@@ -107,6 +107,12 @@ class Lead(Base):
     next_step_date = Column(DateTime, nullable=True)
     general_notes = Column(Text, nullable=True)
 
+    # Client Delivery & Retainer Specifications
+    monthly_post_quota = Column(Integer, default=12)
+    monthly_calls_quota = Column(Integer, default=2)
+    health_score = Column(Integer, default=95)
+    brand_vault = Column(JSON, default=dict)
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -124,4 +130,10 @@ class Lead(Base):
         back_populates="lead",
         cascade="all, delete-orphan",
         order_by="Activity.created_at.desc()",
+    )
+    content_posts = relationship(
+        "ContentPost",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+        order_by="ContentPost.created_at.desc()",
     )

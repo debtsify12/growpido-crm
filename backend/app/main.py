@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.database import run_migrations
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.routers import auth, leads, tasks, notes, users, dashboard, import_export, content
-from app.routers import tenants, people, personas
+from app.routers import tenants, people, personas, invoices, content_posts, integrations
 
 
 @asynccontextmanager
@@ -59,7 +59,7 @@ def _seed_default_tenant_and_super_admin():
             print(f"Default tenant created: {default_tenant.name} ({default_tenant.id})")
 
         # 2. Create super_admin if none exists
-        super_admin = db.query(User).filter(User.role == UserRole.super_admin).first()
+        super_admin = db.query(User).filter(User.email == settings.SUPER_ADMIN_EMAIL).first()
         if not super_admin:
             super_admin = User(
                 name="Super Admin",
@@ -134,6 +134,9 @@ app.include_router(dashboard.router)
 app.include_router(import_export.router)
 app.include_router(content.router)
 app.include_router(personas.router)
+app.include_router(invoices.router)
+app.include_router(content_posts.router)
+app.include_router(integrations.router)
 
 
 @app.get("/")

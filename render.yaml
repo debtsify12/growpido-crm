@@ -5,7 +5,7 @@ services:
     env: python
     region: ohio
     buildCommand: "cd backend && pip install -r requirements.txt"
-    startCommand: "cd backend && gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker"
+    startCommand: "cd backend && gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker"
     envVars:
       - key: DATABASE_URL
         fromDatabase:

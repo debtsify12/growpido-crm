@@ -80,15 +80,29 @@ def handle_stage_change(
     3. Optionally attaches a note
     """
     now = datetime.utcnow()
+    old_stage_val = old_stage.value if hasattr(old_stage, "value") else str(old_stage)
+    new_stage_val = new_stage.value if hasattr(new_stage, "value") else str(new_stage)
 
-    # 1. Update lead timestamps
+    # 1. Update lead timestamps and stage
     lead.stage = new_stage
     lead.stage_changed_at = now
     lead.last_activity_at = now
 
+    # Update is_lost flag
+    if new_stage_val == "Lost" or new_stage == LeadStage.lost:
+        lead.is_lost = True
+    elif old_stage_val == "Lost" or old_stage == LeadStage.lost:
+        lead.is_lost = False
+
     # 2. Create auto task for new stage
-    if new_stage in STAGE_TASK_MAP:
-        title, task_type, due_days = STAGE_TASK_MAP[new_stage]
+    matched_stage_key = None
+    for stage_key in STAGE_TASK_MAP:
+        if stage_key == new_stage or (hasattr(stage_key, "value") and stage_key.value == new_stage_val):
+            matched_stage_key = stage_key
+            break
+
+    if matched_stage_key:
+        title, task_type, due_days = STAGE_TASK_MAP[matched_stage_key]
         task = Task(
             lead_id=lead.id,
             tenant_id=lead.tenant_id,
@@ -106,8 +120,8 @@ def handle_stage_change(
         tenant_id=lead.tenant_id,
         user_id=changed_by_user_id,
         activity_type=ActivityType.stage_change,
-        description=f"Stage changed from '{old_stage.value}' to '{new_stage.value}'",
-        meta_data={"from_stage": old_stage.value, "to_stage": new_stage.value},
+        description=f"Stage changed from '{old_stage_val}' to '{new_stage_val}'",
+        meta_data={"from_stage": old_stage_val, "to_stage": new_stage_val},
     )
     db.add(activity)
 

@@ -11,12 +11,22 @@ if db_url.startswith("postgres://"):
 is_sqlite = db_url.startswith("sqlite")
 engine_kwargs = {"pool_pre_ping": True}
 if is_sqlite:
-    engine_kwargs["connect_args"] = {"check_same_thread": False}
+    engine_kwargs["connect_args"] = {"check_same_thread": False, "timeout": 15}
 else:
     engine_kwargs["pool_size"] = 10
     engine_kwargs["max_overflow"] = 20
 
 engine = create_engine(db_url, **engine_kwargs)
+
+if is_sqlite:
+    from sqlalchemy import event
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -50,12 +60,12 @@ def run_migrations():
         return
 
     try:
-        # Create tables for brand new databases
-        from app.models import tenant, user, lead, task, note, activity, work_log  # noqa: F401
+        # Run safe non-destructive migration for existing tables and new columns
         try:
-            Base.metadata.create_all(bind=engine)
+            from app.migrate_production import run_production_migration
+            run_production_migration()
         except Exception as e:
-            print(f"Error creating tables: {e}")
+            print(f"Non-destructive migration error: {e}")
 
         try:
             inspector = inspect(engine)

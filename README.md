@@ -1,147 +1,119 @@
 # 🚀 Growpido CRM
 
-In-house CRM for Growpido. End-to-end lead lifecycle management — from New Lead → Referral.
+Enterprise CRM and Client Management System for Growpido. End-to-end lead lifecycle management, client retainers, invoice generation, LinkedIn AI content strategy, automated task workflows, and multi-tenant team management.
 
-**Stack**: Python FastAPI + PostgreSQL (backend) · Next.js 14 TypeScript (frontend)  
-**Deploy**: Render (API) + Vercel (Frontend)
+**Stack**:
+- **Backend**: FastAPI (Python 3.11) + SQLAlchemy + PostgreSQL / SQLite + APScheduler + JWT Auth
+- **Frontend**: Next.js 16 (Turbopack / App Router) + React 19 + TypeScript + Zustand + Recharts + dnd-kit
+- **Deployment Ready**: Docker & Docker Compose · Vercel · Render · Any Cloud VPS
 
 ---
 
-## Quick Start (Local Dev)
+## ⚡ Quick Start (Local Development)
 
 ### 1. Backend
 
 ```bash
 cd backend
 
-# Create virtual env
+# Create & activate virtual environment
 python -m venv venv
 venv\Scripts\activate        # Windows
 # source venv/bin/activate   # Mac/Linux
 
-# Install deps
+# Install dependencies
 pip install -r requirements.txt
 
-# Create .env from template
-copy .env.example .env
-# Edit .env — set your DATABASE_URL (local PostgreSQL)
-
-# Run dev server
+# Run development server
 python run.py
-# API runs at http://localhost:8000
-# Docs at http://localhost:8000/docs
+# API running at http://localhost:8000
+# Swagger API docs at http://localhost:8000/docs
 ```
 
-**Super admin** is auto-created on first run:
-- Email: `Founder@growpido.com`
-- Password: `Growpido@2026`
+**Default Admin Credentials**:
+- **Email**: `Founder@growpido.com`
+- **Password**: `Growpido@2026`
+
+---
 
 ### 2. Frontend
 
 ```bash
 cd frontend
 
-# Install deps (already done)
+# Install dependencies
 npm install
 
-# Run dev server
+# Run development server
 npm run dev
-# Runs at http://localhost:3000
+# Web app running at http://localhost:3000
 ```
 
 ---
 
-## Environment Variables
+## 🐳 1-Click Docker Deployment
 
-### Backend `.env`
-```
-DATABASE_URL=postgresql://user:password@localhost:5432/growpido_crm
-SECRET_KEY=your-super-secret-key-min-32-chars
-ALLOWED_ORIGINS=http://localhost:3000,https://your-app.vercel.app
+Run the entire CRM (PostgreSQL database + FastAPI backend + Next.js frontend) with a single command:
+
+```bash
+docker compose up -d --build
 ```
 
-### Frontend `.env.local`
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
+Access the app at `http://localhost:3000` and API at `http://localhost:8000`.
 
 ---
 
-## Features
+## 🌐 Production Cloud Deployment Guide
 
-| Feature | Status |
-|---|---|
-| Sales Pipeline (Kanban, 11 stages) | ✅ |
-| Drag & Drop between stages | ✅ |
-| Lead Profile (single source of truth) | ✅ |
-| Stage change → auto task creation | ✅ |
-| Stuck lead alerts (7-day no activity) | ✅ |
-| My Day tasks view | ✅ |
-| Activity timeline | ✅ |
-| Internal notes | ✅ |
-| Role-based access (Admin / Member) | ✅ |
-| Dashboard + Charts | ✅ |
-| CSV Import from Google Sheets | ✅ |
-| CSV Export | ✅ |
-| JWT Authentication | ✅ |
+### A. Deploy Backend to Render
 
----
-
-## Pipeline Stages
-
-1. New Lead
-2. Discovery Call Booked
-3. Discovery Done
-4. Proposal Sent
-5. Negotiation
-6. Won
-7. Onboarding
-8. Active Client
-9. Upsell
-10. Referral
-11. Lost
+1. Create a **Web Service** on [Render](https://render.com).
+2. Connect your GitHub repository.
+3. Configure settings:
+   - **Root Directory**: `backend`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker`
+4. Add Environment Variables:
+   - `DATABASE_URL`: PostgreSQL connection string (e.g. from Render PostgreSQL)
+   - `SECRET_KEY`: Random 64-character string
+   - `ALLOWED_ORIGINS`: `https://your-frontend-domain.vercel.app`
+   - `OPENAI_API_KEY`: *(Optional)* for AI Content Strategist
 
 ---
 
-## Deploy to Render + Vercel
+### B. Deploy Frontend to Vercel
 
-### Render (Backend)
-1. Connect GitHub repo to Render
-2. Create **Web Service** pointing to `/backend`
-3. Build command: `pip install -r requirements.txt`
-4. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Add environment variables in Render dashboard
-6. Add a **PostgreSQL** database on Render — copy the Internal Database URL to `DATABASE_URL`
-
-### Vercel (Frontend)
-1. Connect GitHub repo to Vercel
-2. Set Root Directory to `frontend`
-3. Add env var: `NEXT_PUBLIC_API_URL=https://your-backend.onrender.com`
-4. Update `vercel.json` with actual Render URL
+1. Import repository on [Vercel](https://vercel.com).
+2. Configure settings:
+   - **Root Directory**: `frontend`
+   - **Framework Preset**: `Next.js`
+   - **Build Command**: `npm run build`
+3. Add Environment Variables:
+   - `NEXT_PUBLIC_API_URL`: `https://your-backend.onrender.com`
 
 ---
 
-## API Docs
+## ✨ Features & Architecture
 
-When backend is running: `http://localhost:8000/docs` (Swagger UI auto-generated)
-
-### Key Endpoints
-| Method | Path | Description |
+| Module | Features & Capabilities | Status |
 |---|---|---|
-| POST | `/api/auth/login` | Login, get JWT |
-| GET | `/api/leads` | List all leads (with filters) |
-| POST | `/api/leads` | Create lead |
-| POST | `/api/leads/{id}/stage` | Change stage (triggers automations) |
-| GET | `/api/tasks` | List tasks (with due_today, overdue filters) |
-| POST | `/api/import/csv` | Import from Google Sheets CSV |
-| GET | `/api/dashboard/overview` | KPI stats |
+| **Invoice Generator** | Sovereign Blue template with Growpido shield logo, dual-pane live preview, itemized deliverables, taxes & discounts, bank UPI transfer details, isolated A4 PDF print/save engine, status workflow (Draft → Sent → Paid). | ✅ Ready |
+| **Sales Pipeline** | 11-stage Kanban board with smooth drag-and-drop (`@dnd-kit`), stage-level financial metrics, and automated follow-up tasks. | ✅ Ready |
+| **Current Clients** | Dedicated active client management with ARR, MRR, ARPU metrics, service tags (Reputation Building, Custom AI Agent), and direct billing drawers. | ✅ Ready |
+| **Lead Profiles** | Unified 360° lead timeline, custom notes, linked invoices, one-click stage change, task checklist, and activity logs. | ✅ Ready |
+| **Content Strategist** | AI LinkedIn post analyzer, viral score algorithm, hook generators, and client persona library. | ✅ Ready |
+| **My Day Tasks** | Smart task prioritization (Overdue, Due Today, Completed) with automated reminders. | ✅ Ready |
+| **Team Directory** | Role-based permissions (`super_admin`, `admin`, `member`), employee directory, work log tracker, and activity feeds. | ✅ Ready |
+| **Import & Export** | Clean CSV / Excel import and export for leads with error tolerance. | ✅ Ready |
+| **Multi-Tenant System** | Multi-organization isolation, tenant administrative controls, and system-level dashboards. | ✅ Ready |
 
 ---
 
-## Google Sheets Migration
+## 🔒 Security & Best Practices
 
-Export your existing Google Sheet as CSV (File → Download → CSV).
-
-Import at: **Leads page → Import CSV button**
-
-Required columns: `full_name` (required), `phone`, `email`, `company_name`, `city`, `budget`, `source`, `stage`
+- **JWT Authentication** with HTTP-only cookies and Bearer auth headers.
+- **Tenant Isolation** on every query for multi-organization data protection.
+- **SQLAlchemy ORM** with automated Alembic migrations on startup.
+- **Strict TypeScript** type checking with 0 build warnings.
+- **A4 Print Engine** with background color forcing for vector-grade PDF generation.

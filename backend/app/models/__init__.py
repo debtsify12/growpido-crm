@@ -6,6 +6,8 @@ from app.models.note import Note
 from app.models.activity import Activity, ActivityType
 from app.models.work_log import WorkLog, WorkLogCategory
 from app.models.persona import Persona
+from app.models.invoice import Invoice, InvoiceStatus
+from app.models.content_post import ContentPost, ContentPillar, ContentStatus
 
 __all__ = [
     "Tenant", "TenantPlan",
@@ -15,4 +17,7 @@ __all__ = [
     "Note",
     "Activity", "ActivityType",
     "WorkLog", "WorkLogCategory",
+    "Persona",
+    "Invoice", "InvoiceStatus",
+    "ContentPost", "ContentPillar", "ContentStatus",
 ]
