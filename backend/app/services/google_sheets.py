@@ -50,7 +50,8 @@ STAGE_MAP: Dict[str, LeadStage] = {
     "not interested": LeadStage.lost,
     "closed lost": LeadStage.lost,
     "onboarding": LeadStage.onboarding,
-    "upsell": LeadStage.upsell,
+    "upsell": LeadStage.disqualified,
+    "disqualified": LeadStage.disqualified,
     "referral": LeadStage.referral,
 }
 

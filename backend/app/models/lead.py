@@ -18,7 +18,7 @@ class LeadStage(str, enum.Enum):
     won = "Won"
     onboarding = "Onboarding"
     active_client = "Active Client"
-    upsell = "Upsell"
+    disqualified = "Disqualified"
     referral = "Referral"
     lost = "Lost"
 
@@ -31,6 +31,11 @@ class LeadPriority(str, enum.Enum):
 
 class LeadSource(str, enum.Enum):
     linkedin = "LinkedIn"
+    linkedin_anamika = "LinkedIn - Anamika"
+    linkedin_yati = "LinkedIn - Yati"
+    linkedin_nidhi = "LinkedIn - Nidhi Hooda"
+    linkedin_disha = "LinkedIn - Disha"
+    linkedin_parmeeta = "LinkedIn - Parmeeta"
     website = "Website / Inbound"
     referral = "Referral"
     cold_email = "Cold Outreach (Email)"

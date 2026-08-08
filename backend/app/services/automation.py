@@ -52,10 +52,10 @@ STAGE_TASK_MAP = {
         TaskType.follow_up,
         7,
     ),
-    LeadStage.upsell: (
-        "Discuss upsell opportunity",
-        TaskType.meeting,
-        2,
+    LeadStage.disqualified: (
+        "Log reason for disqualification",
+        TaskType.follow_up,
+        1,
     ),
     LeadStage.referral: (
         "Ask client for referrals",
@@ -211,7 +211,7 @@ def check_and_alert_stuck_leads(db: Session) -> int:
         LeadStage.negotiation,
         LeadStage.onboarding,
         LeadStage.active_client,
-        LeadStage.upsell,
+        LeadStage.disqualified,
     ]
 
     stuck_leads = (

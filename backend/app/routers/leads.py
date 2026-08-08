@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.lead import Lead, LeadStage
@@ -192,6 +193,28 @@ def change_stage(
 
     db.refresh(lead)
     return lead
+
+
+class BulkDeleteRequest(BaseModel):
+    lead_ids: List[str]
+
+@router.post("/batch-delete", status_code=status.HTTP_200_OK)
+def bulk_delete_leads(
+    payload: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.user import UserRole
+    if current_user.role not in [UserRole.admin, UserRole.super_admin]:
+        raise HTTPException(status_code=403, detail="Only admins can delete leads")
+    
+    query = db.query(Lead).filter(Lead.id.in_(payload.lead_ids))
+    if current_user.role == UserRole.admin:
+        query = query.filter(Lead.tenant_id == current_user.tenant_id)
+        
+    deleted_count = query.delete(synchronize_session=False)
+    db.commit()
+    return {"message": f"Successfully deleted {deleted_count} leads", "deleted_count": deleted_count}
 
 
 @router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)

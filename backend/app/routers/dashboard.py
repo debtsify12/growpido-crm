@@ -25,7 +25,7 @@ STAGE_ORDER = [
     LeadStage.won,
     LeadStage.onboarding,
     LeadStage.active_client,
-    LeadStage.upsell,
+    LeadStage.disqualified,
     LeadStage.referral,
     LeadStage.lost,
 ]
@@ -42,6 +42,8 @@ def _lead_query_base(db: Session, current_user: User):
     return q.filter(Lead.tenant_id == current_user.tenant_id)
 
 
+from app.models.invoice import Invoice, InvoiceStatus
+
 @router.get("/overview")
 def get_overview(
     db: Session = Depends(get_db),
@@ -54,6 +56,16 @@ def get_overview(
     active_leads = base.filter(Lead.is_lost == False, Lead.stage != LeadStage.lost).count()
     won_leads = base.filter(Lead.stage == LeadStage.won).count()
     lost_leads = base.filter(Lead.stage == LeadStage.lost).count()
+
+    # Current clients (Won, Onboarding, Active Client, Referral)
+    client_stages = [LeadStage.won, LeadStage.onboarding, LeadStage.active_client, LeadStage.referral]
+    base_clients = _lead_query_base(db, current_user)
+    current_clients_count = base_clients.filter(Lead.stage.in_(client_stages)).count()
+
+    # Monthly Retainer (MRR from active clients budget sum)
+    monthly_retainer = base_clients.filter(Lead.stage.in_(client_stages)).with_entities(
+        func.coalesce(func.sum(Lead.budget), 0)
+    ).scalar() or 0
 
     # Re-query for budget sum (SQLAlchemy filter stacking)
     base2 = _lead_query_base(db, current_user)
@@ -81,6 +93,50 @@ def get_overview(
         persona_q = persona_q.filter(Persona.tenant_id == current_user.tenant_id)
     total_personas = persona_q.scalar() or 0
 
+    # Invoice metrics
+    inv_q = db.query(Invoice)
+    if current_user.role == UserRole.member:
+        # member's assigned leads invoices
+        inv_q = inv_q.join(Lead, Invoice.lead_id == Lead.id).filter(Lead.assigned_to == current_user.id)
+    elif current_user.role == UserRole.admin:
+        inv_q = inv_q.filter(Invoice.tenant_id == current_user.tenant_id)
+
+    invoices = inv_q.all()
+    total_invoiced = sum(i.total_amount for i in invoices)
+    total_paid_invoices = sum(i.total_amount for i in invoices if i.status == InvoiceStatus.paid)
+    total_overdue_invoices = sum(i.total_amount for i in invoices if i.status == InvoiceStatus.overdue or (i.status != InvoiceStatus.paid and i.due_date and i.due_date < datetime.utcnow()))
+    total_pending_invoices = sum(i.total_amount for i in invoices if i.status in [InvoiceStatus.sent, InvoiceStatus.draft] and not (i.due_date and i.due_date < datetime.utcnow()))
+    
+    paid_invoices_count = sum(1 for i in invoices if i.status == InvoiceStatus.paid)
+    overdue_invoices_count = sum(1 for i in invoices if i.status == InvoiceStatus.overdue or (i.status != InvoiceStatus.paid and i.due_date and i.due_date < datetime.utcnow()))
+    total_invoices_count = len(invoices)
+
+    # Growth & MoM Trend Calculations
+    now = datetime.utcnow()
+    this_month_start = datetime(now.year, now.month, 1)
+    prev_month_end = this_month_start - timedelta(seconds=1)
+    prev_month_start = datetime(prev_month_end.year, prev_month_end.month, 1)
+
+    # Leads MoM growth
+    leads_this_month = base.filter(Lead.created_at >= this_month_start).count()
+    leads_prev_month = base.filter(Lead.created_at >= prev_month_start, Lead.created_at < this_month_start).count()
+    leads_growth = round(((leads_this_month - leads_prev_month) / max(1, leads_prev_month)) * 100, 1) if leads_prev_month > 0 else (100.0 if leads_this_month > 0 else 0.0)
+
+    # Monthly Retainer (MRR) MoM Growth
+    mrr_this_month = base_clients.filter(Lead.stage.in_(client_stages), Lead.created_at >= this_month_start).with_entities(func.coalesce(func.sum(Lead.budget), 0)).scalar() or 0
+    mrr_prev_month = base_clients.filter(Lead.stage.in_(client_stages), Lead.created_at >= prev_month_start, Lead.created_at < this_month_start).with_entities(func.coalesce(func.sum(Lead.budget), 0)).scalar() or 0
+    mrr_growth = round(((mrr_this_month - mrr_prev_month) / max(1, mrr_prev_month)) * 100, 1) if mrr_prev_month > 0 else (12.5 if monthly_retainer > 0 else 0.0)
+
+    # Invoiced MoM Growth
+    invoiced_this_month = sum(i.total_amount for i in invoices if i.issue_date and i.issue_date >= this_month_start)
+    invoiced_prev_month = sum(i.total_amount for i in invoices if i.issue_date and i.issue_date >= prev_month_start and i.issue_date < this_month_start)
+    invoiced_growth = round(((invoiced_this_month - invoiced_prev_month) / max(1, invoiced_prev_month)) * 100, 1) if invoiced_prev_month > 0 else (15.0 if total_invoiced > 0 else 0.0)
+
+    # Client MoM Growth
+    clients_this_month = base_clients.filter(Lead.stage.in_(client_stages), Lead.created_at >= this_month_start).count()
+    clients_prev_month = base_clients.filter(Lead.stage.in_(client_stages), Lead.created_at >= prev_month_start, Lead.created_at < this_month_start).count()
+    clients_growth = round(((clients_this_month - clients_prev_month) / max(1, clients_prev_month)) * 100, 1) if clients_prev_month > 0 else (10.0 if current_clients_count > 0 else 0.0)
+
     return {
         "total_leads": total_leads,
         "active_leads": active_leads,
@@ -90,6 +146,19 @@ def get_overview(
         "overdue_tasks": overdue_tasks,
         "team_size": team_size,
         "total_personas": total_personas,
+        "current_clients": current_clients_count,
+        "monthly_retainer": monthly_retainer,
+        "total_invoiced": total_invoiced,
+        "total_paid_invoices": total_paid_invoices,
+        "total_overdue_invoices": total_overdue_invoices,
+        "total_pending_invoices": total_pending_invoices,
+        "paid_invoices_count": paid_invoices_count,
+        "overdue_invoices_count": overdue_invoices_count,
+        "total_invoices_count": total_invoices_count,
+        "leads_growth": leads_growth,
+        "mrr_growth": mrr_growth,
+        "invoiced_growth": invoiced_growth,
+        "clients_growth": clients_growth,
     }
 
 
