@@ -40,7 +40,7 @@ export type LeadStage =
   | 'Won'
   | 'Onboarding'
   | 'Active Client'
-  | 'Upsell'
+  | 'Disqualified'
   | 'Referral'
   | 'Lost';
 
@@ -48,6 +48,11 @@ export type LeadPriority = 'Hot' | 'Warm' | 'Cold';
 
 export type LeadSource =
   | 'LinkedIn'
+  | 'LinkedIn - Anamika'
+  | 'LinkedIn - Yati'
+  | 'LinkedIn - Nidhi Hooda'
+  | 'LinkedIn - Disha'
+  | 'LinkedIn - Parmeeta'
   | 'Website / Inbound'
   | 'Referral'
   | 'Cold Outreach (Email)'
@@ -235,6 +240,19 @@ export interface DashboardOverview {
   overdue_tasks: number;
   team_size?: number;
   total_personas?: number;
+  current_clients?: number;
+  monthly_retainer?: number;
+  total_invoiced?: number;
+  total_paid_invoices?: number;
+  total_overdue_invoices?: number;
+  total_pending_invoices?: number;
+  paid_invoices_count?: number;
+  overdue_invoices_count?: number;
+  total_invoices_count?: number;
+  leads_growth?: number;
+  mrr_growth?: number;
+  invoiced_growth?: number;
+  clients_growth?: number;
 }
 
 export interface PipelineStageData {
@@ -299,7 +317,7 @@ export const PIPELINE_STAGES: LeadStage[] = [
   'Won',
   'Onboarding',
   'Active Client',
-  'Upsell',
+  'Disqualified',
   'Referral',
   'Lost',
 ];
@@ -313,7 +331,7 @@ export const STAGE_COLORS: Record<LeadStage, string> = {
   'Won': '#10B981',
   'Onboarding': '#06B6D4',
   'Active Client': '#3B82F6',
-  'Upsell': '#F97316',
+  'Disqualified': '#94A3B8',
   'Referral': '#EC4899',
   'Lost': '#6B7280',
 };
@@ -326,6 +344,11 @@ export const PRIORITY_COLORS: Record<LeadPriority, string> = {
 
 export const LEAD_SOURCES: LeadSource[] = [
   'LinkedIn',
+  'LinkedIn - Anamika',
+  'LinkedIn - Yati',
+  'LinkedIn - Nidhi Hooda',
+  'LinkedIn - Disha',
+  'LinkedIn - Parmeeta',
   'Website / Inbound',
   'Referral',
   'Cold Outreach (Email)',

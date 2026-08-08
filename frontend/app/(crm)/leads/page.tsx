@@ -24,6 +24,10 @@ export default function LeadsPage() {
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const PAGE_SIZE = 50;
 
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [deletingBulk, setDeletingBulk] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const loadLeads = useCallback(async () => {
     setLoading(true);
     try {
@@ -35,10 +39,42 @@ export default function LeadsPage() {
       const res = await leadsApi.list(params);
       setLeads(res.data.items);
       setTotal(res.data.total);
+      setSelectedLeadIds([]);
     } finally {
       setLoading(false);
     }
   }, [page, search, stageFilter, sourceFilter, priorityFilter]);
+
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.length === leads.length) {
+      setSelectedLeadIds([]);
+    } else {
+      setSelectedLeadIds(leads.map((l) => l.id));
+    }
+  };
+
+  const toggleSelectLead = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedLeadIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLeadIds.length === 0) return;
+    setDeletingBulk(true);
+    try {
+      await leadsApi.batchDelete(selectedLeadIds);
+      setShowDeleteConfirm(false);
+      setSelectedLeadIds([]);
+      await loadLeads();
+    } catch (err) {
+      console.error('Failed to bulk delete leads', err);
+      alert('Failed to delete selected leads. Make sure you have admin permissions.');
+    } finally {
+      setDeletingBulk(false);
+    }
+  };
 
   useEffect(() => { 
     loadLeads(); 
@@ -186,6 +222,39 @@ export default function LeadsPage() {
         )}
       </div>
 
+      {/* Bulk actions floating/inline bar */}
+      {selectedLeadIds.length > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 20px',
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          borderRadius: '8px',
+          marginBottom: '16px',
+        }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-danger)' }}>
+            {selectedLeadIds.length} lead{selectedLeadIds.length > 1 ? 's' : ''} selected
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setSelectedLeadIds([])}
+            >
+              Deselect All
+            </button>
+            <button
+              className="btn btn-sm"
+              style={{ background: 'var(--color-danger)', color: '#fff', border: 'none' }}
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              🗑 Delete Selected ({selectedLeadIds.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       {loading ? (
         <div className="loading-page"><div className="spinner" /> Loading leads...</div>
@@ -200,9 +269,17 @@ export default function LeadsPage() {
         </div>
       ) : (
         <div className="table-container" style={{ overflowX: 'auto' }}>
-          <table className="table" style={{ minWidth: '1600px' }}>
+          <table className="table" style={{ minWidth: '1650px' }}>
             <thead>
               <tr>
+                <th style={{ width: '40px', padding: '12px 8px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={leads.length > 0 && selectedLeadIds.length === leads.length}
+                    onChange={toggleSelectAll}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                </th>
                 <th style={{ minWidth: '220px' }}>Name & Company</th>
                 <th style={{ minWidth: '130px' }}>Date Added</th>
                 <th style={{ minWidth: '150px' }}>Profile (Added By)</th>
@@ -223,114 +300,131 @@ export default function LeadsPage() {
               </tr>
             </thead>
             <tbody>
-              {leads.map((lead) => (
-                <tr
-                  key={lead.id}
-                  onClick={() => router.push(`/leads/${lead.id}`)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{lead.full_name}</div>
-                    {lead.company_name && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.company_name}</div>}
-                  </td>
-                  <td>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                      {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                    </div>
-                    {lead.created_at && (
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                        {new Date(lead.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              {leads.map((lead) => {
+                const isSelected = selectedLeadIds.includes(lead.id);
+                return (
+                  <tr
+                    key={lead.id}
+                    onClick={() => router.push(`/leads/${lead.id}`)}
+                    style={{
+                      cursor: 'pointer',
+                      background: isSelected ? 'rgba(14, 86, 196, 0.05)' : undefined,
+                    }}
+                  >
+                    <td
+                      onClick={(e) => toggleSelectLead(lead.id, e)}
+                      style={{ textAlign: 'center', padding: '12px 8px' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                      />
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{lead.full_name}</div>
+                      {lead.company_name && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.company_name}</div>}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                        {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                       </div>
-                    )}
-                  </td>
-                  <td>
-                    {lead.added_by_user ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div className="avatar avatar-sm">{lead.added_by_user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}</div>
-                        <span style={{ fontSize: '12px' }}>{lead.added_by_user.name}</span>
+                      {lead.created_at && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {new Date(lead.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {lead.added_by_user ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div className="avatar avatar-sm">{lead.added_by_user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}</div>
+                          <span style={{ fontSize: '12px' }}>{lead.added_by_user.name}</span>
+                        </div>
+                      ) : '—'}
+                    </td>
+                    <td>{stageBadge(lead.stage)}</td>
+                    <td>
+                      {isClientStage(lead.stage) ? (
+                        <span
+                          className="badge"
+                          style={{
+                            background: '#ecfdf5',
+                            color: '#059669',
+                            border: '1px solid #a7f3d0',
+                            fontWeight: 700,
+                            fontSize: '11px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <span style={{ fontSize: '9px' }}>●</span> Client
+                        </span>
+                      ) : lead.is_lost ? (
+                        <span className="badge badge-muted" style={{ opacity: 0.6, fontSize: '11px' }}>
+                          Lost
+                        </span>
+                      ) : (
+                        <span className={`badge badge-priority-${(lead.priority || 'warm').toLowerCase()}`}>
+                          {lead.priority || 'Warm'}
+                        </span>
+                      )}
+                    </td>
+                    <td>{lead.poc_name || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {lead.reputation_building && <span className="badge badge-info" style={{ fontSize: '10px' }}>LinkedIn</span>}
+                        {lead.custom_ai_agent && <span className="badge badge-muted" style={{ fontSize: '10px' }}>AI Agent</span>}
                       </div>
-                    ) : '—'}
-                  </td>
-                  <td>{stageBadge(lead.stage)}</td>
-                  <td>
-                    {isClientStage(lead.stage) ? (
-                      <span
-                        className="badge"
-                        style={{
-                          background: '#ecfdf5',
-                          color: '#059669',
-                          border: '1px solid #a7f3d0',
-                          fontWeight: 700,
-                          fontSize: '11px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
+                    </td>
+                    <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>
+                      {lead.budget ? `₹${lead.budget.toLocaleString('en-IN')}` : <span style={{ opacity: 0.4 }}>—</span>}
+                    </td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{lead.source || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <select
+                        className="form-control"
+                        style={{ padding: '4px 8px', fontSize: '12px', minWidth: '130px', height: '32px' }}
+                        value={lead.assigned_to || ''}
+                        onChange={async (e) => {
+                          try {
+                            await leadsApi.update(lead.id, { assigned_to: e.target.value || undefined });
+                            loadLeads();
+                          } catch (err) {
+                            console.error("Failed to assign lead", err);
+                          }
                         }}
                       >
-                        <span style={{ fontSize: '9px' }}>●</span> Client
-                      </span>
-                    ) : lead.is_lost ? (
-                      <span className="badge badge-muted" style={{ opacity: 0.6, fontSize: '11px' }}>
-                        Lost
-                      </span>
-                    ) : (
-                      <span className={`badge badge-priority-${(lead.priority || 'warm').toLowerCase()}`}>
-                        {lead.priority || 'Warm'}
-                      </span>
-                    )}
-                  </td>
-                  <td>{lead.poc_name || <span style={{ opacity: 0.4 }}>—</span>}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {lead.reputation_building && <span className="badge badge-info" style={{ fontSize: '10px' }}>LinkedIn</span>}
-                      {lead.custom_ai_agent && <span className="badge badge-muted" style={{ fontSize: '10px' }}>AI Agent</span>}
-                    </div>
-                  </td>
-                  <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>
-                    {lead.budget ? `₹${lead.budget.toLocaleString('en-IN')}` : <span style={{ opacity: 0.4 }}>—</span>}
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{lead.source || <span style={{ opacity: 0.4 }}>—</span>}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <select
-                      className="form-control"
-                      style={{ padding: '4px 8px', fontSize: '12px', minWidth: '130px', height: '32px' }}
-                      value={lead.assigned_to || ''}
-                      onChange={async (e) => {
-                        try {
-                          await leadsApi.update(lead.id, { assigned_to: e.target.value || undefined });
-                          loadLeads();
-                        } catch (err) {
-                          console.error("Failed to assign lead", err);
-                        }
-                      }}
-                    >
-                      <option value="">Unassigned</option>
-                      {teamMembers.map(member => (
-                        <option key={member.id} value={member.id}>{member.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td style={{ fontSize: '12px' }}>{lead.next_step || <span style={{ opacity: 0.4 }}>—</span>}</td>
-                  <td style={{ fontSize: '12px' }}>{lead.next_step_date ? new Date(lead.next_step_date).toLocaleDateString() : <span style={{ opacity: 0.4 }}>—</span>}</td>
-                  <td style={{ fontSize: '12px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.company_address || <span style={{ opacity: 0.4 }}>—</span>}</td>
-                  <td style={{ fontSize: '12px' }}>{lead.phone || <span style={{ opacity: 0.4 }}>—</span>}</td>
-                  <td>
-                    {lead.linkedin_url ? (
-                      <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--brand-accent)' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-                      </a>
-                    ) : <span style={{ opacity: 0.4 }}>—</span>}
-                  </td>
-                  <td style={{ fontSize: '12px', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={lead.general_notes || ''}>
-                    {lead.general_notes || <span style={{ opacity: 0.4 }}>—</span>}
-                  </td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                    {lead.last_activity_at
-                      ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
-                      : <span style={{ opacity: 0.4 }}>—</span>}
-                  </td>
-                </tr>
-              ))}
+                        <option value="">Unassigned</option>
+                        {teamMembers.map(member => (
+                          <option key={member.id} value={member.id}>{member.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ fontSize: '12px' }}>{lead.next_step || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td style={{ fontSize: '12px' }}>{lead.next_step_date ? new Date(lead.next_step_date).toLocaleDateString() : <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td style={{ fontSize: '12px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.company_address || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td style={{ fontSize: '12px' }}>{lead.phone || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td>
+                      {lead.linkedin_url ? (
+                        <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--brand-accent)' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                        </a>
+                      ) : <span style={{ opacity: 0.4 }}>—</span>}
+                    </td>
+                    <td style={{ fontSize: '12px', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={lead.general_notes || ''}>
+                      {lead.general_notes || <span style={{ opacity: 0.4 }}>—</span>}
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                      {lead.last_activity_at
+                        ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
+                        : <span style={{ opacity: 0.4 }}>—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -359,6 +453,35 @@ export default function LeadsPage() {
         onClose={() => setShowSheetsSync(false)}
         onSyncCompleted={loadLeads}
       />
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ color: 'var(--color-danger)' }}>Delete Leads</h2>
+              <button type="button" className="btn btn-ghost btn-icon" onClick={() => setShowDeleteConfirm(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
+                Are you sure you want to delete <strong>{selectedLeadIds.length}</strong> selected lead{selectedLeadIds.length > 1 ? 's' : ''}? This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button
+                type="button"
+                className="btn"
+                style={{ background: 'var(--color-danger)', color: '#fff' }}
+                disabled={deletingBulk}
+                onClick={handleBulkDelete}
+              >
+                {deletingBulk ? 'Deleting...' : `Delete ${selectedLeadIds.length} Leads`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

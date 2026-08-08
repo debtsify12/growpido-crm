@@ -47,17 +47,44 @@ function StatCard({
   value,
   sub,
   color,
+  trend,
+  trendLabel,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   color?: string;
+  trend?: number;
+  trendLabel?: string;
 }) {
+  const isPositive = trend !== undefined && trend >= 0;
   return (
-    <div className="card" style={{ padding: '20px 24px' }}>
-      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>{label}</div>
+    <div className="card" style={{ padding: '20px 24px', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{label}</div>
+        {trend !== undefined && (
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: '12px',
+            background: isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            color: isPositive ? '#059669' : '#DC2626',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '2px',
+          }}>
+            {isPositive ? '↑' : '↓'} {Math.abs(trend)}%
+          </span>
+        )}
+      </div>
       <div style={{ fontSize: '28px', fontWeight: 700, color: color || 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>{sub}</div>}
+      {(sub || trendLabel) && (
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+          <span>{sub}</span>
+          {trendLabel && <span style={{ opacity: 0.8 }}>{trendLabel}</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -80,16 +107,14 @@ const STAGE_SHORT: Record<string, string> = {
   'Won': 'Won',
   'Onboarding': 'Onboarding',
   'Active Client': 'Active Client',
-  'Upsell': 'Upsell',
+  'Disqualified': 'Disqualified',
   'Referral': 'Referral',
   'Lost': 'Lost',
 };
 
 function formatINR(n: number) {
-  if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
-  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-  if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
-  return `₹${n}`;
+  if (!n || isNaN(n)) return '₹0';
+  return `₹${Math.round(n).toLocaleString('en-IN')}`;
 }
 
 function initials(name: string) {
@@ -184,12 +209,57 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '28px' }}>
-        <StatCard label="Total Leads" value={overview?.total_leads ?? 0} />
-        <StatCard label="Active Leads" value={overview?.active_leads ?? 0} color="var(--brand-primary)" />
-        <StatCard label="Won" value={overview?.won_leads ?? 0} color="var(--color-success)" />
-        <StatCard label="Lost" value={overview?.lost_leads ?? 0} color="var(--color-danger)" />
+      {/* Main Revenue & Client KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+        <StatCard
+          label="Active Clients"
+          value={overview?.current_clients ?? 0}
+          sub="Clients in Won, Onboarding, Active"
+          color="#0E56C4"
+          trend={overview?.clients_growth}
+          trendLabel="vs last month"
+        />
+        <StatCard
+          label="Monthly Retainer (MRR)"
+          value={overview?.monthly_retainer ? formatINR(overview.monthly_retainer) : '₹0'}
+          sub="Recurring monthly budget"
+          color="#10B981"
+          trend={overview?.mrr_growth}
+          trendLabel="vs last month"
+        />
+        <StatCard
+          label="Total Invoiced"
+          value={overview?.total_invoiced ? formatINR(overview.total_invoiced) : '₹0'}
+          sub={`${overview?.total_invoices_count ?? 0} total invoices`}
+          color="var(--text-primary)"
+          trend={overview?.invoiced_growth}
+          trendLabel="vs last month"
+        />
+        <StatCard
+          label="Paid Invoices"
+          value={overview?.total_paid_invoices ? formatINR(overview.total_paid_invoices) : '₹0'}
+          sub={`${overview?.paid_invoices_count ?? 0} invoices cleared`}
+          color="#10B981"
+        />
+        <StatCard
+          label="Overdue Invoices"
+          value={overview?.total_overdue_invoices ? formatINR(overview.total_overdue_invoices) : '₹0'}
+          sub={`${overview?.overdue_invoices_count ?? 0} invoices overdue`}
+          color="#EF4444"
+        />
+      </div>
+
+      {/* Secondary Pipeline & Activity KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+        <StatCard
+          label="Total Leads"
+          value={overview?.total_leads ?? 0}
+          trend={overview?.leads_growth}
+          trendLabel="vs last month"
+        />
+        <StatCard label="Active Pipeline" value={overview?.active_leads ?? 0} color="var(--brand-primary)" />
+        <StatCard label="Won Deals" value={overview?.won_leads ?? 0} color="var(--color-success)" />
+        <StatCard label="Lost Deals" value={overview?.lost_leads ?? 0} color="var(--color-danger)" />
         <StatCard
           label="Pipeline Value"
           value={overview?.total_pipeline_value ? formatINR(overview.total_pipeline_value) : '₹0'}

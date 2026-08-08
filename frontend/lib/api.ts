@@ -65,6 +65,7 @@ export const leadsApi = {
   changeStage: (id: string, stage: string, note?: string) =>
     api.post<Lead>(`/api/leads/${id}/stage`, { stage, note }),
   delete: (id: string) => api.delete(`/api/leads/${id}`),
+  batchDelete: (leadIds: string[]) => api.post('/api/leads/batch-delete', { lead_ids: leadIds }),
   activities: (id: string) => api.get<Activity[]>(`/api/leads/${id}/activities`),
   notes: (id: string) => api.get<Note[]>(`/api/leads/${id}/notes`),
   addNote: (id: string, content: string) =>

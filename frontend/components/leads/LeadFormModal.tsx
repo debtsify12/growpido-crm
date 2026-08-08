@@ -2,35 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { leadsApi } from '@/lib/api';
-import {
-  PIPELINE_STAGES, LEAD_SOURCES,
-  LeadStage, LeadSource,
-} from '@/lib/types';
+import { Lead, PIPELINE_STAGES, LEAD_SOURCES, LeadStage, LeadSource } from '@/lib/types';
 
 interface Props {
   onClose: () => void;
   onSaved: () => void;
   initialStage?: LeadStage;
+  leadToEdit?: Lead | null;
 }
 
-export default function LeadFormModal({ onClose, onSaved, initialStage }: Props) {
+export default function LeadFormModal({ onClose, onSaved, initialStage, leadToEdit }: Props) {
   const [form, setForm] = useState({
-    full_name: '',
-    phone: '',
-    email: '',
-    company_name: '',
-    company_industry: '',
-    city: '',
-    company_address: '',
-    linkedin_url: '',
-    poc_name: '',
-    budget: '',
-    source: '' as LeadSource | '',
-    priority: 'Warm',
-    stage: initialStage || 'New Lead' as LeadStage,
-    reputation_building: false,
-    custom_ai_agent: false,
-    tags: '',
+    full_name: leadToEdit?.full_name || '',
+    phone: leadToEdit?.phone || '',
+    email: leadToEdit?.email || '',
+    company_name: leadToEdit?.company_name || '',
+    company_industry: leadToEdit?.company_industry || '',
+    city: leadToEdit?.city || '',
+    company_address: leadToEdit?.company_address || '',
+    linkedin_url: leadToEdit?.linkedin_url || '',
+    poc_name: leadToEdit?.poc_name || '',
+    budget: leadToEdit?.budget ? String(leadToEdit.budget) : '',
+    source: (leadToEdit?.source || '') as LeadSource | '',
+    priority: leadToEdit?.priority || 'Warm',
+    stage: leadToEdit?.stage || initialStage || ('New Lead' as LeadStage),
+    reputation_building: leadToEdit?.reputation_building || false,
+    custom_ai_agent: leadToEdit?.custom_ai_agent || false,
+    tags: leadToEdit?.tags ? leadToEdit.tags.join(', ') : '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,19 +51,25 @@ export default function LeadFormModal({ onClose, onSaved, initialStage }: Props)
     setError('');
     setLoading(true);
     try {
-      await leadsApi.create({
+      const payload = {
         ...form,
         budget: form.budget ? parseInt(form.budget) : undefined,
         source: form.source || undefined,
         priority: form.priority as import('@/lib/types').LeadPriority,
         stage: form.stage as import('@/lib/types').LeadStage,
         tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
-      });
+      };
+
+      if (leadToEdit) {
+        await leadsApi.update(leadToEdit.id, payload);
+      } else {
+        await leadsApi.create(payload);
+      }
       onSaved();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })
         ?.response?.data?.detail;
-      setError(typeof msg === 'string' ? msg : 'Failed to create lead');
+      setError(typeof msg === 'string' ? msg : leadToEdit ? 'Failed to update lead' : 'Failed to create lead');
     } finally {
       setLoading(false);
     }
@@ -83,7 +87,7 @@ export default function LeadFormModal({ onClose, onSaved, initialStage }: Props)
     >
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Add New Lead</h2>
+          <h2 className="modal-title">{leadToEdit ? 'Edit Lead' : 'Add New Lead'}</h2>
           <button type="button" className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
         </div>
 
@@ -211,7 +215,7 @@ export default function LeadFormModal({ onClose, onSaved, initialStage }: Props)
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? <><span className="spinner" style={{ width: 14, height: 14 }} />Saving...</> : 'Create Lead'}
+              {loading ? <><span className="spinner" style={{ width: 14, height: 14 }} />Saving...</> : leadToEdit ? 'Save Changes' : 'Create Lead'}
             </button>
           </div>
         </form>

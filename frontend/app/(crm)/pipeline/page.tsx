@@ -27,6 +27,7 @@ export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSheetsSync, setShowSheetsSync] = useState(false);
   const [stageSummary, setStageSummary] = useState<Record<string, { count: number; total_value: number }>>({});
@@ -229,7 +230,7 @@ export default function PipelinePage() {
               leads={leadsByStage[stage] || []}
               color={STAGE_COLORS[stage]}
               summary={stageSummary[stage]}
-              onLeadClick={(lead) => router.push(`/leads/${lead.id}`)}
+              onLeadClick={(lead) => setEditingLead(lead)}
             />
           ))}
         </div>
@@ -254,6 +255,19 @@ export default function PipelinePage() {
           onClose={() => setShowCreateModal(false)}
           onSaved={() => {
             setShowCreateModal(false);
+            loadLeads();
+            loadSummary();
+          }}
+        />
+      )}
+
+      {/* Edit Lead Modal */}
+      {editingLead && (
+        <LeadFormModal
+          leadToEdit={editingLead}
+          onClose={() => setEditingLead(null)}
+          onSaved={() => {
+            setEditingLead(null);
             loadLeads();
             loadSummary();
           }}

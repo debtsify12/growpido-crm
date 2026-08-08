@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { Lead, LeadStage, Invoice, InvoiceSummary } from '@/lib/types';
-import { leadsApi, invoicesApi } from '@/lib/api';
+import { Lead, LeadStage, User, Invoice, InvoiceSummary } from '@/lib/types';
+import { leadsApi, invoicesApi, peopleApi } from '@/lib/api';
 import InvoiceModal from '@/components/invoices/InvoiceModal';
 import ClientInvoicesDrawer from '@/components/invoices/ClientInvoicesDrawer';
 
@@ -11,7 +11,6 @@ const CURRENT_CLIENT_STAGES: LeadStage[] = [
   'Won',
   'Onboarding',
   'Active Client',
-  'Upsell',
   'Referral',
 ];
 
@@ -26,6 +25,7 @@ export default function CurrentClientsPage() {
   // Filters & Search
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [serviceFilter, setServiceFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'value_desc' | 'value_asc' | 'name' | 'recent'>('value_desc');
 
@@ -37,12 +37,15 @@ export default function CurrentClientsPage() {
   const [selectedClientForDrawer, setSelectedClientForDrawer] = useState<Lead | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  const [teamMembers, setTeamMembers] = useState<User[]>([]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [leadsRes, summaryRes] = await Promise.all([
+      const [leadsRes, summaryRes, teamRes] = await Promise.all([
         leadsApi.list({ limit: 500 }),
         invoicesApi.summary().catch(() => ({ data: null })),
+        peopleApi.list().catch(() => ({ data: [] })),
       ]);
 
       const allLeads = leadsRes.data.items || [];
@@ -51,6 +54,8 @@ export default function CurrentClientsPage() {
       );
 
       setClients(currentClients);
+      const teamList = Array.isArray(teamRes?.data) ? teamRes.data : (teamRes?.data as any)?.items || [];
+      setTeamMembers(teamList);
       if (summaryRes?.data) setInvoiceSummary(summaryRes.data);
     } catch (err) {
       console.error('Error loading current clients data', err);
@@ -68,22 +73,36 @@ export default function CurrentClientsPage() {
     return clients
       .filter((client) => {
         const query = search.toLowerCase();
+
+        // Helper to get owner name
+        const sourceName = client.source && client.source.startsWith('LinkedIn - ')
+          ? client.source.replace('LinkedIn - ', '')
+          : null;
+        const ownerName = client.assigned_user?.name || sourceName || client.poc_name || 'Unassigned';
+
         const matchesSearch =
           search === '' ||
           client.full_name?.toLowerCase().includes(query) ||
           client.company_name?.toLowerCase().includes(query) ||
           client.email?.toLowerCase().includes(query) ||
           client.city?.toLowerCase().includes(query) ||
-          client.poc_name?.toLowerCase().includes(query);
+          client.poc_name?.toLowerCase().includes(query) ||
+          ownerName.toLowerCase().includes(query);
 
         const matchesStage = stageFilter === 'all' || client.stage === stageFilter;
+
+        const matchesOwner =
+          ownerFilter === 'all' ||
+          (ownerFilter === 'unassigned' && !client.assigned_to && !sourceName) ||
+          client.assigned_to === ownerFilter ||
+          ownerName.toLowerCase() === ownerFilter.toLowerCase();
 
         const matchesService =
           serviceFilter === 'all' ||
           (serviceFilter === 'reputation' && client.reputation_building) ||
           (serviceFilter === 'ai' && client.custom_ai_agent);
 
-        return matchesSearch && matchesStage && matchesService;
+        return matchesSearch && matchesStage && matchesOwner && matchesService;
       })
       .sort((a, b) => {
         if (sortBy === 'value_desc') return (b.budget || 0) - (a.budget || 0);
@@ -91,7 +110,7 @@ export default function CurrentClientsPage() {
         if (sortBy === 'name') return (a.company_name || a.full_name).localeCompare(b.company_name || b.full_name);
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
-  }, [clients, search, stageFilter, serviceFilter, sortBy]);
+  }, [clients, search, stageFilter, ownerFilter, serviceFilter, sortBy]);
 
   // Executive Metrics
   const totalClientsCount = clients.length;
@@ -128,8 +147,6 @@ export default function CurrentClientsPage() {
         return { bg: 'rgba(16, 185, 129, 0.1)', text: '#059669', border: 'rgba(16, 185, 129, 0.25)', dot: '#10B981' };
       case 'Onboarding':
         return { bg: 'rgba(6, 182, 212, 0.1)', text: '#0891B2', border: 'rgba(6, 182, 212, 0.25)', dot: '#06B6D4' };
-      case 'Upsell':
-        return { bg: 'rgba(245, 158, 11, 0.1)', text: '#D97706', border: 'rgba(245, 158, 11, 0.25)', dot: '#F59E0B' };
       case 'Referral':
         return { bg: 'rgba(139, 92, 246, 0.1)', text: '#7C3AED', border: 'rgba(139, 92, 246, 0.25)', dot: '#8B5CF6' };
       case 'Won':
@@ -150,6 +167,18 @@ export default function CurrentClientsPage() {
     ];
     return gradients[charCode % gradients.length];
   };
+
+  async function handleAssignOwner(clientId: string, userId: string) {
+    try {
+      await leadsApi.update(clientId, { assigned_to: userId || undefined });
+      const updatedUser = teamMembers.find((u) => u.id === userId);
+      setClients((prev) =>
+        prev.map((c) => (c.id === clientId ? { ...c, assigned_to: userId || undefined, assigned_user: updatedUser } : c))
+      );
+    } catch (err) {
+      console.error('Failed to assign team member:', err);
+    }
+  }
 
   function handleOpenGenerateInvoice(client: Lead, invoice?: Invoice) {
     setSelectedClientForInvoice(client);
@@ -393,32 +422,6 @@ export default function CurrentClientsPage() {
           </div>
         </div>
 
-        {/* Portfolio Health */}
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 100%)',
-            border: '1px solid #E9D5FF',
-            borderRadius: '14px',
-            padding: '20px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#6B21A8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Avg. Client Health Score
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F3E8FF', color: '#6B21A8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
-              📈
-            </div>
-          </div>
-          <div style={{ fontSize: '28px', fontWeight: 900, marginTop: '8px', color: '#6B21A8', letterSpacing: '-0.02em' }}>
-            98%
-          </div>
-          <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
-            🟢 All accounts thriving · Zero churn risk
-          </div>
-        </div>
-
         {/* Invoiced & Collected */}
         <div
           style={{
@@ -505,6 +508,29 @@ export default function CurrentClientsPage() {
             {CURRENT_CLIENT_STAGES.map((st) => (
               <option key={st} value={st}>{st} ({stageStats[st]?.count || 0})</option>
             ))}
+          </select>
+
+          <select
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid #CBD5E1',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              color: '#334155',
+              background: '#FFFFFF',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="all">All Internal POCs</option>
+            {teamMembers.map((member) => (
+              <option key={member.id} value={member.id}>
+                👤 {member.name}
+              </option>
+            ))}
+            <option value="unassigned">Unassigned</option>
           </select>
 
           <select
@@ -597,19 +623,19 @@ export default function CurrentClientsPage() {
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left', color: '#475569' }}>
                   <th style={{ padding: '14px 20px', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Client / Company
+                    Client &amp; Company
                   </th>
                   <th style={{ padding: '14px 16px', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                     Date Added
                   </th>
                   <th style={{ padding: '14px 16px', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Primary POC &amp; Contact
+                    Customer Contact
+                  </th>
+                  <th style={{ padding: '14px 16px', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Internal Lead Owner (POC)
                   </th>
                   <th style={{ padding: '14px 16px', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Lifecycle Stage
-                  </th>
-                  <th style={{ padding: '14px 16px', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Health Index
                   </th>
                   <th style={{ padding: '14px 16px', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Monthly Retainer
@@ -624,9 +650,15 @@ export default function CurrentClientsPage() {
               </thead>
               <tbody>
                 {filteredClients.map((client) => {
-                  const companyName = client.company_name || client.full_name || 'Client Account';
+                  const clientName = client.full_name || 'Client Name';
+                  const companyName = client.company_name || 'No Company';
                   const stageStyle = getStageBadgeStyle(client.stage);
                   const healthScore = client.health_score || 95;
+                  // Derive internal POC handling the client (e.g. Yati, Anamika, Nidhi Hooda, Disha, Parmeeta)
+                  const sourceName = client.source && client.source.startsWith('LinkedIn - ') 
+                    ? client.source.replace('LinkedIn - ', '') 
+                    : null;
+                  const assignedOwner = client.assigned_user?.name || sourceName || client.poc_name || 'Unassigned';
 
                   return (
                     <tr
@@ -637,7 +669,7 @@ export default function CurrentClientsPage() {
                       }}
                       className="client-table-row"
                     >
-                      {/* Company Name & Avatar */}
+                      {/* Client Name & Company */}
                       <td style={{ padding: '16px 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                           <div
@@ -645,7 +677,7 @@ export default function CurrentClientsPage() {
                               width: '42px',
                               height: '42px',
                               borderRadius: '10px',
-                              background: getCompanyAvatarGradient(companyName),
+                              background: getCompanyAvatarGradient(clientName),
                               color: '#FFFFFF',
                               display: 'flex',
                               alignItems: 'center',
@@ -656,14 +688,14 @@ export default function CurrentClientsPage() {
                               flexShrink: 0,
                             }}
                           >
-                            {companyName[0].toUpperCase()}
+                            {clientName[0].toUpperCase()}
                           </div>
                           <div>
                             <Link
                               href={`/leads/${client.id}`}
                               style={{
                                 fontWeight: 800,
-                                fontSize: '14px',
+                                fontSize: '14.5px',
                                 color: '#0F172A',
                                 textDecoration: 'none',
                                 display: 'inline-flex',
@@ -671,17 +703,20 @@ export default function CurrentClientsPage() {
                                 gap: '4px',
                               }}
                             >
-                              <span>{companyName}</span>
+                              <span>{clientName}</span>
                               <span style={{ fontSize: '12px', color: '#0E56C4', opacity: 0.8 }}>↗</span>
                             </Link>
-                            <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
-                              {client.company_industry || client.city || 'Client Account'}
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginTop: '2px' }}>
+                              🏢 {companyName}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '1px' }}>
+                              {client.company_industry || client.city || 'Active Account'}
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Dedicated Date Added Column */}
+                      {/* Date Added */}
                       <td style={{ padding: '16px 16px', whiteSpace: 'nowrap' }}>
                         <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
                           {client.created_at ? new Date(client.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
@@ -693,19 +728,69 @@ export default function CurrentClientsPage() {
                         )}
                       </td>
 
-                      {/* POC Contact */}
+                      {/* Customer Contact (Email & Phone) */}
                       <td style={{ padding: '16px 16px' }}>
-                        <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '13.5px' }}>
-                          {client.poc_name || client.full_name}
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
-                          {client.email ? (
-                            <a href={`mailto:${client.email}`} style={{ color: '#0E56C4', textDecoration: 'none' }}>
-                              {client.email}
-                            </a>
-                          ) : (
-                            <span>{client.phone || 'No direct email'}</span>
-                          )}
+                        {client.email ? (
+                          <a href={`mailto:${client.email}`} style={{ fontWeight: 600, color: '#0E56C4', textDecoration: 'none', fontSize: '13px', display: 'block' }}>
+                            ✉️ {client.email}
+                          </a>
+                        ) : (
+                          <div style={{ fontSize: '12px', color: '#94A3B8' }}>No email provided</div>
+                        )}
+                        {client.phone ? (
+                          <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '3px' }}>
+                            📞 {client.phone}
+                          </div>
+                        ) : null}
+                      </td>
+
+                      {/* Internal Lead Owner / POC (Team Member Selection) */}
+                      <td style={{ padding: '16px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div
+                            className="avatar avatar-sm"
+                            style={{
+                              background: '#0E56C4',
+                              color: '#fff',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {assignedOwner.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </div>
+                          <div>
+                            <select
+                              value={client.assigned_to || ''}
+                              onChange={(e) => handleAssignOwner(client.id, e.target.value)}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                border: '1px solid #CBD5E1',
+                                fontSize: '12.5px',
+                                fontWeight: 700,
+                                color: client.assigned_to ? '#0F172A' : '#64748B',
+                                background: '#FFFFFF',
+                                cursor: 'pointer',
+                                outline: 'none',
+                                maxWidth: '140px',
+                              }}
+                            >
+                              <option value="">Unassigned</option>
+                              {teamMembers.map((member) => (
+                                <option key={member.id} value={member.id}>
+                                  {member.name}
+                                </option>
+                              ))}
+                            </select>
+                            <div style={{ fontSize: '10.5px', color: '#64748B', marginTop: '2px' }}>Account Owner</div>
+                          </div>
                         </div>
                       </td>
 
@@ -727,27 +812,6 @@ export default function CurrentClientsPage() {
                         >
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: stageStyle.dot }} />
                           {client.stage}
-                        </span>
-                      </td>
-
-                      {/* Health Score */}
-                      <td style={{ padding: '16px 16px' }}>
-                        <span
-                          style={{
-                            background: '#ECFDF5',
-                            color: '#059669',
-                            border: '1px solid #A7F3D0',
-                            padding: '4px 10px',
-                            borderRadius: '9999px',
-                            fontSize: '11.5px',
-                            fontWeight: 800,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                          }}
-                        >
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
-                          <span>{healthScore}% Thriving</span>
                         </span>
                       </td>
 
@@ -869,9 +933,14 @@ export default function CurrentClientsPage() {
             }}
           >
             {filteredClients.map((client) => {
-              const companyName = client.company_name || client.full_name || 'Client Account';
+              const clientName = client.full_name || 'Client Name';
+              const companyName = client.company_name || 'No Company';
               const stageStyle = getStageBadgeStyle(client.stage);
               const healthScore = client.health_score || 95;
+              const sourceName = client.source && client.source.startsWith('LinkedIn - ') 
+                ? client.source.replace('LinkedIn - ', '') 
+                : null;
+              const assignedOwner = client.assigned_user?.name || sourceName || client.poc_name || 'Unassigned';
 
               return (
                 <div
@@ -898,7 +967,7 @@ export default function CurrentClientsPage() {
                           width: '46px',
                           height: '46px',
                           borderRadius: '12px',
-                          background: getCompanyAvatarGradient(companyName),
+                          background: getCompanyAvatarGradient(clientName),
                           color: '#FFFFFF',
                           display: 'flex',
                           alignItems: 'center',
@@ -908,22 +977,25 @@ export default function CurrentClientsPage() {
                           boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                         }}
                       >
-                        {companyName[0].toUpperCase()}
+                        {clientName[0].toUpperCase()}
                       </div>
                       <div>
                         <Link
                           href={`/leads/${client.id}`}
                           style={{
                             fontWeight: 800,
-                            fontSize: '15px',
+                            fontSize: '15.5px',
                             color: '#0F172A',
                             textDecoration: 'none',
                           }}
                         >
-                          {companyName}
+                          {clientName}
                         </Link>
-                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                          {client.company_industry || client.city || 'Client Account'}
+                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', marginTop: '2px' }}>
+                          🏢 {companyName}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '1px' }}>
+                          {client.company_industry || client.city || 'Active Account'}
                         </div>
                       </div>
                     </div>
@@ -954,9 +1026,6 @@ export default function CurrentClientsPage() {
                       borderRadius: '10px',
                       border: '1px solid #E2E8F0',
                       padding: '12px 14px',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '10px',
                     }}
                   >
                     <div>
@@ -966,16 +1035,6 @@ export default function CurrentClientsPage() {
                       <div style={{ fontSize: '16px', fontWeight: 900, color: '#059669', marginTop: '2px' }}>
                         {formatLakhs(client.budget || 0)}
                         <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748B' }}> /mo</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Client Health
-                      </span>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#059669', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span>🟢</span>
-                        <span>{healthScore}% Thriving</span>
                       </div>
                     </div>
                   </div>
@@ -989,8 +1048,14 @@ export default function CurrentClientsPage() {
                       </strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
-                      <span>Key POC:</span>
-                      <strong style={{ color: '#0F172A' }}>{client.poc_name || client.full_name}</strong>
+                      <span>Account Owner:</span>
+                      <strong style={{ color: '#0E56C4' }}>👤 {assignedOwner}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                      <span>Customer Email:</span>
+                      <strong style={{ color: '#0F172A', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {client.email || '—'}
+                      </strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
                       <span>Deliverables:</span>
