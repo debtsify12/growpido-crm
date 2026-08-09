@@ -65,8 +65,15 @@ export default function LeadsPage() {
     try {
       await leadsApi.batchDelete(selectedLeadIds);
       setShowDeleteConfirm(false);
-      setSelectedLeadIds([]);
-      await loadLeads();
+      
+      // If we deleted all leads on the current page and we're not on page 1, go to previous page
+      if (selectedLeadIds.length === leads.length && page > 1) {
+        setPage((prev) => prev - 1);
+        setSelectedLeadIds([]);
+      } else {
+        setSelectedLeadIds([]);
+        await loadLeads();
+      }
     } catch (err) {
       console.error('Failed to bulk delete leads', err);
       alert('Failed to delete selected leads. Make sure you have admin permissions.');

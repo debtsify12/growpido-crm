@@ -53,6 +53,7 @@ export default function LeadFormModal({ onClose, onSaved, initialStage, leadToEd
     try {
       const payload = {
         ...form,
+        email: form.email || undefined,
         budget: form.budget ? parseInt(form.budget) : undefined,
         source: form.source || undefined,
         priority: form.priority as import('@/lib/types').LeadPriority,
