@@ -54,7 +54,7 @@ export default function CurrentClientsPage() {
       );
 
       setClients(currentClients);
-      const teamList = Array.isArray(teamRes?.data) ? teamRes.data : (teamRes?.data as any)?.items || [];
+      const teamList = Array.isArray(teamRes?.data) ? teamRes.data : (teamRes?.data as { items?: User[] })?.items || [];
       setTeamMembers(teamList);
       if (summaryRes?.data) setInvoiceSummary(summaryRes.data);
     } catch (err) {
@@ -653,7 +653,6 @@ export default function CurrentClientsPage() {
                   const clientName = client.full_name || 'Client Name';
                   const companyName = client.company_name || 'No Company';
                   const stageStyle = getStageBadgeStyle(client.stage);
-                  const healthScore = client.health_score || 95;
                   // Derive internal POC handling the client (e.g. Yati, Anamika, Nidhi Hooda, Disha, Parmeeta)
                   const sourceName = client.source && client.source.startsWith('LinkedIn - ') 
                     ? client.source.replace('LinkedIn - ', '') 
@@ -936,7 +935,6 @@ export default function CurrentClientsPage() {
               const clientName = client.full_name || 'Client Name';
               const companyName = client.company_name || 'No Company';
               const stageStyle = getStageBadgeStyle(client.stage);
-              const healthScore = client.health_score || 95;
               const sourceName = client.source && client.source.startsWith('LinkedIn - ') 
                 ? client.source.replace('LinkedIn - ', '') 
                 : null;
