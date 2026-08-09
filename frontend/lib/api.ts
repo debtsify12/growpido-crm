@@ -223,43 +223,6 @@ export const contentPostsApi = {
     ),
 };
 
-export const integrationsApi = {
-  getGoogleSheetsConfig: () =>
-    api.get<{
-      spreadsheet_id: string;
-      gid: string;
-      spreadsheet_url: string;
-      last_synced_at: string | null;
-      last_sync_result: {
-        success?: boolean;
-        total_rows_processed?: number;
-        created_leads?: number;
-        updated_leads?: number;
-        unchanged_leads?: number;
-        errors?: string[];
-        synced_at?: string;
-      } | null;
-      auto_sync_enabled: boolean;
-      sync_interval_minutes: number;
-      webhook_url: string;
-      script_code: string;
-    }>('/api/integrations/google-sheets/config'),
-  syncGoogleSheets: (spreadsheet_id?: string, gid?: string) =>
-    api.post<{
-      success: boolean;
-      total_rows_processed: number;
-      created_leads: number;
-      updated_leads: number;
-      unchanged_leads: number;
-      errors: string[];
-      synced_at: string;
-    }>('/api/integrations/google-sheets/sync', { spreadsheet_id, gid }),
-  getAppsScript: () =>
-    api.get<{
-      webhook_url: string;
-      script: string;
-    }>('/api/integrations/google-sheets/script'),
-};
 
 export default api;
 

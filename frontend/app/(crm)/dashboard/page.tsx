@@ -78,7 +78,19 @@ function StatCard({
           </span>
         )}
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 700, color: color || 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div 
+        title={String(value)}
+        style={{ 
+          fontSize: 'clamp(16px, 1.8vw, 24px)', 
+          fontWeight: 700, 
+          color: color || 'var(--text-primary)', 
+          lineHeight: 1,
+          wordBreak: 'break-word',
+          letterSpacing: '-0.02em'
+        }}
+      >
+        {value}
+      </div>
       {(sub || trendLabel) && (
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
           <span>{sub}</span>

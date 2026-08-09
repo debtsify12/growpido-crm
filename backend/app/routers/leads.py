@@ -205,11 +205,9 @@ def bulk_delete_leads(
     current_user: User = Depends(get_current_user),
 ):
     from app.models.user import UserRole
-    if current_user.role not in [UserRole.admin, UserRole.super_admin]:
-        raise HTTPException(status_code=403, detail="Only admins can delete leads")
     
     query = db.query(Lead).filter(Lead.id.in_(payload.lead_ids))
-    if current_user.role == UserRole.admin:
+    if current_user.role != UserRole.super_admin:
         query = query.filter(Lead.tenant_id == current_user.tenant_id)
         
     deleted_count = query.delete(synchronize_session=False)
@@ -224,9 +222,9 @@ def delete_lead(
     current_user: User = Depends(get_current_user),
 ):
     from app.models.user import UserRole
-    if current_user.role not in [UserRole.admin, UserRole.super_admin]:
-        raise HTTPException(status_code=403, detail="Only admins can delete leads")
     lead = _get_lead_or_404(lead_id, db)
+    if current_user.role != UserRole.super_admin and lead.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Cannot delete lead from another tenant")
     db.delete(lead)
     db.commit()
 

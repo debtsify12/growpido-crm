@@ -6,7 +6,7 @@ import { leadsApi, importExportApi, peopleApi } from '@/lib/api';
 import { Lead, User, PIPELINE_STAGES, LEAD_SOURCES, STAGE_COLORS } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import LeadFormModal from '@/components/leads/LeadFormModal';
-import GoogleSheetsSyncModal from '@/components/integrations/GoogleSheetsSyncModal';
+
 
 export default function LeadsPage() {
   const router = useRouter();
@@ -14,7 +14,6 @@ export default function LeadsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSheetsSync, setShowSheetsSync] = useState(false);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
@@ -126,22 +125,6 @@ export default function LeadsPage() {
           <p className="page-subtitle">{total} leads · Single source of truth</p>
         </div>
         <div className="topbar-actions">
-          <button 
-            className="btn btn-secondary btn-sm"
-            onClick={() => setShowSheetsSync(true)}
-            style={{ 
-              background: 'rgba(16, 185, 129, 0.1)', 
-              color: '#10b981', 
-              borderColor: 'rgba(16, 185, 129, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 600
-            }}
-          >
-            <span>📊</span>
-            <span>Sync Google Sheet</span>
-          </button>
           <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -448,11 +431,6 @@ export default function LeadsPage() {
         />
       )}
 
-      <GoogleSheetsSyncModal
-        isOpen={showSheetsSync}
-        onClose={() => setShowSheetsSync(false)}
-        onSyncCompleted={loadLeads}
-      />
 
       {/* Bulk Delete Confirmation Modal */}
       {showDeleteConfirm && (

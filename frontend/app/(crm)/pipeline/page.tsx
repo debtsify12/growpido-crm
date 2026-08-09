@@ -20,7 +20,7 @@ import { Lead, PIPELINE_STAGES, STAGE_COLORS, LeadStage } from '@/lib/types';
 import LeadCard from '@/components/pipeline/LeadCard';
 import StageColumn from '@/components/pipeline/StageColumn';
 import LeadFormModal from '@/components/leads/LeadFormModal';
-import GoogleSheetsSyncModal from '@/components/integrations/GoogleSheetsSyncModal';
+
 
 export default function PipelinePage() {
   const router = useRouter();
@@ -29,7 +29,6 @@ export default function PipelinePage() {
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSheetsSync, setShowSheetsSync] = useState(false);
   const [stageSummary, setStageSummary] = useState<Record<string, { count: number; total_value: number }>>({});
 
   const loadLeads = useCallback(async () => {
@@ -180,22 +179,6 @@ export default function PipelinePage() {
           </p>
         </div>
         <div className="topbar-actions">
-          <button 
-            className="btn btn-secondary btn-sm"
-            onClick={() => setShowSheetsSync(true)}
-            style={{ 
-              background: 'rgba(16, 185, 129, 0.1)', 
-              color: '#10b981', 
-              borderColor: 'rgba(16, 185, 129, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 600
-            }}
-          >
-            <span>📊</span>
-            <span>Sync Google Sheet</span>
-          </button>
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => router.push('/leads')}
@@ -273,16 +256,6 @@ export default function PipelinePage() {
           }}
         />
       )}
-
-      {/* Google Sheets Sync Modal */}
-      <GoogleSheetsSyncModal
-        isOpen={showSheetsSync}
-        onClose={() => setShowSheetsSync(false)}
-        onSyncCompleted={() => {
-          loadLeads();
-          loadSummary();
-        }}
-      />
     </div>
   );
 }

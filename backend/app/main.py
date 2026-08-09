@@ -136,7 +136,7 @@ app.include_router(content.router)
 app.include_router(personas.router)
 app.include_router(invoices.router)
 app.include_router(content_posts.router)
-app.include_router(integrations.router)
+
 
 
 @app.get("/")
