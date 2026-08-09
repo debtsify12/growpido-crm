@@ -210,7 +210,11 @@ def bulk_delete_leads(
     if current_user.role != UserRole.super_admin:
         query = query.filter(Lead.tenant_id == current_user.tenant_id)
         
-    deleted_count = query.delete(synchronize_session=False)
+    leads_to_delete = query.all()
+    deleted_count = len(leads_to_delete)
+    for lead in leads_to_delete:
+        db.delete(lead)
+        
     db.commit()
     return {"message": f"Successfully deleted {deleted_count} leads", "deleted_count": deleted_count}
 
